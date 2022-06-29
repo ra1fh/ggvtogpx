@@ -24,36 +24,10 @@
 #define GGV_BIN_H_INCLUDED_
 
 #include "defs.h"
-#include "format.h"
-
 
 class GgvBinFormat : public Format
 {
 public:
-  ff_type get_type() const override
-  {
-    return ff_type_file;
-  }
-
-  QVector<ff_cap> get_cap() const override
-  {
-    return {
-      ff_cap_none,  // waypoints
-      ff_cap_read,  // tracks
-      ff_cap_none   // routes
-    };
-  }
-
-  QString get_encode() const override
-  {
-    return CET_CHARSET_ASCII;
-  }
-
-  int get_fixed_encode() const override
-  {
-    return 0;
-  }
-
   void rd_init(const QString& fname) override;
   void read() override;
   void rd_deinit() override;

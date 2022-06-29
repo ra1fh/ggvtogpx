@@ -27,6 +27,7 @@
 #include <QFile>
 #include <QtEndian>
 
+#include "defs.h"
 #include "ggv_bin.h"
 
 #define MYNAME "ggv_bin"
@@ -55,7 +56,7 @@ GgvBinFormat::ggv_bin_read16(QDataStream& stream, const char* descr)
   if (stream.status() != QDataStream::Ok) {
     fatal(MYNAME ": Read error (%s)\n", descr ? descr : "");
   }
-  if (global_opts.debug_level > 1) {
+  if (get_debug_level() > 1) {
     qDebug("ovl: %-15s %5u (0x%04x)", descr, res, res);
   }
   return res;
@@ -69,7 +70,7 @@ GgvBinFormat::ggv_bin_read32(QDataStream& stream, const char* descr)
   if (stream.status() != QDataStream::Ok) {
     fatal(MYNAME ": Read error (%s)\n", descr ? descr : "");
   }
-  if (global_opts.debug_level > 1) {
+  if (get_debug_level() > 1) {
     if ((res & 0xFFFF0000) == 0) {
       qDebug("ovl: %-15s %5u (0x%08x)", descr, res, res);
     } else {
@@ -85,7 +86,7 @@ GgvBinFormat::ggv_bin_read_text16(QDataStream& stream, QByteArray& buf, const ch
   quint16 len = ggv_bin_read16(stream, descr);
   ggv_bin_read_bytes(stream, buf, len, descr);
   buf.append('\0');
-  if (global_opts.debug_level > 1) {
+  if (get_debug_level() > 1) {
     qDebug() << "ovl: text =" << QString::fromLatin1(buf.constData()).simplified();
   }
 }
@@ -103,7 +104,7 @@ GgvBinFormat::ggv_bin_read_text32(QDataStream& stream, QByteArray& buf, const ch
   }
   ggv_bin_read_bytes(stream, buf, len, descr);
   buf.append('\0');
-  if (global_opts.debug_level > 1) {
+  if (get_debug_level() > 1) {
     qDebug() << "ovl: text =" << QString::fromLatin1(buf.constData()).simplified();
   }
 }
@@ -129,7 +130,7 @@ GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
   QByteArray buf;
   QString track_name;
   QString waypt_name;
-  route_head* ggv_bin_track;
+  Route* ggv_bin_track;
   Waypoint* wpt;
   double lon, lat;
   quint16 line_points;
@@ -140,7 +141,7 @@ GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
     ggv_bin_read_bytes(stream, buf, header_len, "map name");
     buf.remove(0,4);
     buf.append('\0');
-    if (global_opts.debug_level > 1) {
+    if (get_debug_level() > 1) {
       qDebug() << "ovl: name =" << buf.constData();
     }
   }
@@ -148,7 +149,7 @@ GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
   while (!stream.atEnd()) {
     track_name.clear();
 
-    if (global_opts.debug_level > 1) {
+    if (get_debug_level() > 1) {
       qDebug("------------------------------------ 0x%llx", stream.device()->pos());
     }
 
@@ -189,10 +190,10 @@ GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
       ggv_bin_read16(stream, "line width");
       ggv_bin_read16(stream, "line type");
       line_points = ggv_bin_read16(stream, "line points");
-      ggv_bin_track = new route_head;
+      ggv_bin_track = new Route;
       track_add_head(ggv_bin_track);
       if (! track_name.isEmpty()) {
-        ggv_bin_track->rte_name = track_name;
+        ggv_bin_track->route_name = track_name;
       }
 
       for (int i = 1; i <= line_points; i++) {
@@ -258,7 +259,7 @@ GgvBinFormat::ggv_bin_read_v34_header(QDataStream& stream, quint32& number_label
     ggv_bin_read_bytes(stream, buf, header_len, "map name");
     buf.remove(0,4);
     buf.append('\0');
-    if (global_opts.debug_level > 1) {
+    if (get_debug_level() > 1) {
       qDebug() << "ovl: name =" << buf.constData();
     }
   }
@@ -269,7 +270,7 @@ GgvBinFormat::ggv_bin_read_v34_label(QDataStream& stream)
 {
   QByteArray buf;
 
-  if (global_opts.debug_level > 1) {
+  if (get_debug_level() > 1) {
     qDebug("------------------------------------ 0x%llx", stream.device()->pos());
   }
   ggv_bin_read_bytes(stream, buf, 0x08, "label header");
@@ -312,12 +313,12 @@ GgvBinFormat::ggv_bin_read_v34_record(QDataStream& stream)
 {
   QByteArray buf;
   Waypoint* wpt;
-  route_head* ggv_bin_track;
+  Route* ggv_bin_track;
   quint32 bmp_len;
   quint16 line_points;
   double lon, lat;
 
-  if (global_opts.debug_level > 1) {
+  if (get_debug_level() > 1) {
     qDebug("------------------------------------ 0x%llx", stream.device()->pos());
   }
 
@@ -350,11 +351,11 @@ GgvBinFormat::ggv_bin_read_v34_record(QDataStream& stream)
   // area
   case 0x17:
     // line
-    ggv_bin_track = new route_head;
+    ggv_bin_track = new Route;
     track_add_head(ggv_bin_track);
 
     if (! label.isEmpty()) {
-      ggv_bin_track->rte_name = label;
+      ggv_bin_track->route_name = label;
     }
 
     ggv_bin_read16(stream, "line prop1");
@@ -435,7 +436,7 @@ GgvBinFormat::ggv_bin_read_v34(QDataStream& stream)
     ggv_bin_read_v34_header(stream, label_count, record_count);
 
     if (label_count && !stream.atEnd()) {
-      if (global_opts.debug_level > 1) {
+      if (get_debug_level() > 1) {
         qDebug("-----labels------------------------- 0x%llx", stream.device()->pos());
       }
       for (unsigned int i = 0; i < label_count; i++) {
@@ -444,7 +445,7 @@ GgvBinFormat::ggv_bin_read_v34(QDataStream& stream)
     }
 
     if (record_count && !stream.atEnd()) {
-      if (global_opts.debug_level > 1) {
+      if (get_debug_level() > 1) {
         qDebug("-----records------------------------ 0x%llx", stream.device()->pos());
       }
       for (unsigned int i = 0; i < record_count; i++) {
@@ -453,20 +454,20 @@ GgvBinFormat::ggv_bin_read_v34(QDataStream& stream)
     }
 
     if (!stream.atEnd()) {
-      if (global_opts.debug_level > 1) {
+      if (get_debug_level() > 1) {
         qDebug("------------------------------------ 0x%llx", stream.device()->pos());
       }
       // we just skip over the next magic bytes without checking they
       // contain the correct string. This is consistent with what I
       // believe GGV does
       ggv_bin_read_bytes(stream, buf, 23, "magicbytes");
-      if (global_opts.debug_level > 1) {
+      if (get_debug_level() > 1) {
         qDebug() << "ovl: header = " << buf.constData();
       }
     }
   }
 
-  if (global_opts.debug_level > 1) {
+  if (get_debug_level() > 1) {
     qDebug("fpos: 0x%llx", stream.device()->pos());
     qDebug("size: 0x%llx", stream.device()->size());
   }
@@ -491,7 +492,7 @@ GgvBinFormat::read()
   QByteArray buf;
   ggv_bin_read_bytes(stream, buf, 0x17, "magic");
   buf.append('\0');
-  if (global_opts.debug_level > 1) {
+  if (get_debug_level() > 1) {
     qDebug() << "ovl: header =" << buf.constData();
   }
 
