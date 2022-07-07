@@ -16,3 +16,6 @@ add_executable(ggvtogpx
 )
 
 target_link_libraries(ggvtogpx PRIVATE Qt6::Core)
+
+add_custom_target(style
+  astyle --options=astylerc *.h *.cc)
