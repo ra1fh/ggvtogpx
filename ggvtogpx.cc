@@ -20,6 +20,8 @@
 */
 
 #include <QDebug>
+#include <QFile>
+#include <QXmlStreamWriter>
 
 #include "defs.h"
 #include "ggv_bin.h"
@@ -61,8 +63,8 @@ int main(int argc, char* argv[])
 {
   GgvBinFormat* format = new GgvBinFormat();
 
-  if (argc <= 1) {
-    qCritical() << "usage: ggvtogpx <filename>";
+  if (argc <= 2) {
+    qCritical() << "usage: ggvtogpx <infile> <outfile>";
     exit(1);
   }
 
@@ -72,4 +74,44 @@ int main(int argc, char* argv[])
   format->rd_init(fname);
   format->read();
   format->rd_deinit();
+
+  QString oname = argv[2];
+  QFile ofile(oname);
+  if (!ofile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    qCritical() << "usage: ggvtogpx <filename>";
+    exit(1);
+  }
+
+  QXmlStreamWriter xml;
+  xml.setAutoFormatting(true);
+  xml.setAutoFormattingIndent(2);
+  xml.setDevice(&ofile);
+  xml.writeStartDocument();
+  xml.writeStartElement(QStringLiteral("gpx"));
+  xml.writeAttribute(QStringLiteral("version"), QStringLiteral("1.0"));
+  xml.writeAttribute(QStringLiteral("creator"), QStringLiteral("ggvtogpx"));
+  xml.writeAttribute(QStringLiteral("xmlns"), QStringLiteral("http://www.topografix.com/GPX/1/0"));
+  xml.writeTextElement(QStringLiteral("time"), QStringLiteral("1970-01-01T00:00:00"));
+
+  xml.writeStartElement(QStringLiteral("bounds"));
+  xml.writeAttribute(QStringLiteral("minlat"), QStringLiteral("1.23"));
+  xml.writeAttribute(QStringLiteral("minlon"), QStringLiteral("1.23"));
+  xml.writeAttribute(QStringLiteral("maxlat"), QStringLiteral("1.23"));
+  xml.writeAttribute(QStringLiteral("maxlon"), QStringLiteral("1.23"));
+
+  for (auto&& route : std::as_const(routes)) {
+    xml.writeStartElement(QStringLiteral("trk"));
+    xml.writeStartElement(QStringLiteral("trkseg"));
+    for (auto&& waypoint : std::as_const(route->waypoint_list)) {
+      xml.writeStartElement(QStringLiteral("trkpt"));
+      xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', 9));
+      xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', 9));
+      xml.writeEndElement();
+    }
+    xml.writeEndElement();
+    xml.writeEndElement();
+  }
+
+  xml.writeEndElement();
+  xml.writeEndDocument();
 }
