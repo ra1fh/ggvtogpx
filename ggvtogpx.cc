@@ -65,7 +65,6 @@ int process_files(const QString& infile, const QString& outfile)
 {
   GgvBinFormat* format = new GgvBinFormat();
 
-  debug_level = 2;
   format->rd_init(infile);
   format->read();
   format->rd_deinit();
@@ -172,6 +171,9 @@ int main(int argc, char* argv[])
   parser.addHelpOption();
   parser.addVersionOption();
 
+  QCommandLineOption debugLevelOption("D", "debug <level>", "debug");
+  parser.addOption(debugLevelOption);
+
   QCommandLineOption inputTypeOption("i", "input type (ignored)", "type");
   parser.addOption(inputTypeOption);
 
@@ -188,6 +190,17 @@ int main(int argc, char* argv[])
   parser.addPositionalArgument("outfile","output file (alternative to -F)");
 
   parser.process(app);
+
+  debug_level = 0;
+  if (parser.isSet(debugLevelOption)) {
+    bool ok;
+    int num = parser.value(debugLevelOption).toInt(&ok);
+    if (ok && num >= 0 && num <= 9) {
+      debug_level = num;
+    } else {
+      qCritical() << qPrintable(app.applicationName()) << ": invalid debug level";
+    }
+  }
 
   QString infile("");
   QString outfile("");
