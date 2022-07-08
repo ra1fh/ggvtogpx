@@ -19,6 +19,8 @@
 
 */
 
+#include <QCoreApplication>
+#include <QCommandLineParser>
 #include <QDebug>
 #include <QFile>
 #include <QXmlStreamWriter>
@@ -59,27 +61,19 @@ void track_add_wpt(Route* route, Waypoint* waypoint)
   route->waypoint_list.append(waypoint);
 };
 
-int main(int argc, char* argv[])
+int process_files(const QString& infile, const QString& outfile)
 {
   GgvBinFormat* format = new GgvBinFormat();
 
-  if (argc <= 2) {
-    qCritical() << "usage: ggvtogpx <infile> <outfile>";
-    exit(1);
-  }
-
-  QString fname = argv[1];
-
   debug_level = 2;
-  format->rd_init(fname);
+  format->rd_init(infile);
   format->read();
   format->rd_deinit();
 
-  QString oname = argv[2];
-  QFile ofile(oname);
+  QFile ofile(outfile);
   if (!ofile.open(QIODevice::WriteOnly | QIODevice::Text)) {
     qCritical() << "usage: ggvtogpx <filename>";
-    exit(1);
+    return 1;
   }
 
   QXmlStreamWriter xml;
@@ -91,16 +85,66 @@ int main(int argc, char* argv[])
   xml.writeAttribute(QStringLiteral("version"), QStringLiteral("1.0"));
   xml.writeAttribute(QStringLiteral("creator"), QStringLiteral("ggvtogpx"));
   xml.writeAttribute(QStringLiteral("xmlns"), QStringLiteral("http://www.topografix.com/GPX/1/0"));
-  xml.writeTextElement(QStringLiteral("time"), QStringLiteral("1970-01-01T00:00:00"));
+  xml.writeTextElement(QStringLiteral("time"), QStringLiteral("1970-01-01T00:00:00Z"));
+
+  double minlat, minlon, maxlat, maxlon;
+  minlat = 360;
+  minlon = 360;
+  maxlat = 0;
+  maxlon = 0;
+  for (auto&& route : std::as_const(routes)) {
+    for (auto&& waypoint : std::as_const(route->waypoint_list)) {
+      if (waypoint->latitude > maxlat) {
+        maxlat = waypoint->latitude;
+      }
+      if (waypoint->latitude < minlat) {
+        minlat = waypoint->latitude;
+      }
+      if (waypoint->longitude > maxlon) {
+        maxlon = waypoint->longitude;
+      }
+      if (waypoint->longitude < minlon) {
+        minlon = waypoint->longitude;
+      }
+    }
+  }
+  for (auto&& waypoint : std::as_const(waypoints)) {
+    if (waypoint->latitude > maxlat) {
+      maxlat = waypoint->latitude;
+    }
+    if (waypoint->latitude < minlat) {
+      minlat = waypoint->latitude;
+    }
+    if (waypoint->longitude > maxlon) {
+      maxlon = waypoint->longitude;
+    }
+    if (waypoint->longitude < minlon) {
+      minlon = waypoint->longitude;
+    }
+  }
 
   xml.writeStartElement(QStringLiteral("bounds"));
-  xml.writeAttribute(QStringLiteral("minlat"), QStringLiteral("1.23"));
-  xml.writeAttribute(QStringLiteral("minlon"), QStringLiteral("1.23"));
-  xml.writeAttribute(QStringLiteral("maxlat"), QStringLiteral("1.23"));
-  xml.writeAttribute(QStringLiteral("maxlon"), QStringLiteral("1.23"));
+  xml.writeAttribute(QStringLiteral("minlat"), QString::number(minlat, 'f', 9));
+  xml.writeAttribute(QStringLiteral("minlon"), QString::number(minlon, 'f', 9));
+  xml.writeAttribute(QStringLiteral("maxlat"), QString::number(maxlat, 'f', 9));
+  xml.writeAttribute(QStringLiteral("maxlon"), QString::number(maxlon, 'f', 9));
+  xml.writeEndElement();
+
+  for (auto&& waypoint : std::as_const(waypoints)) {
+    xml.writeStartElement(QStringLiteral("wpt"));
+    xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', 9));
+    xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', 9));
+    xml.writeTextElement(QStringLiteral("name"), waypoint->description);
+    xml.writeTextElement(QStringLiteral("cmt"), waypoint->description);
+    xml.writeTextElement(QStringLiteral("desc"), waypoint->description);
+    xml.writeEndElement();
+  }
 
   for (auto&& route : std::as_const(routes)) {
     xml.writeStartElement(QStringLiteral("trk"));
+    if (! route->route_name.isEmpty()) {
+      xml.writeTextElement(QStringLiteral("name"), route->route_name);
+    }
     xml.writeStartElement(QStringLiteral("trkseg"));
     for (auto&& waypoint : std::as_const(route->waypoint_list)) {
       xml.writeStartElement(QStringLiteral("trkpt"));
@@ -114,4 +158,56 @@ int main(int argc, char* argv[])
 
   xml.writeEndElement();
   xml.writeEndDocument();
+  return 0;
+}
+
+int main(int argc, char* argv[])
+{
+  QCoreApplication app(argc, argv);
+  QCoreApplication::setApplicationName("ggvtogpx");
+  QCoreApplication::setApplicationVersion("1.0");
+
+  QCommandLineParser parser;
+  parser.setApplicationDescription("GeoGrid Viewer to GPX Converter");
+  parser.addHelpOption();
+  parser.addVersionOption();
+
+  QCommandLineOption inputTypeOption("i", "input type (ignored)", "type");
+  parser.addOption(inputTypeOption);
+
+  QCommandLineOption inputFileOption("f", "input <file>", "file");
+  parser.addOption(inputFileOption);
+
+  QCommandLineOption outputTypeOption("o", "output type (ignored)", "type");
+  parser.addOption(outputTypeOption);
+
+  QCommandLineOption outputFileOption("F", "output <file>", "file");
+  parser.addOption(outputFileOption);
+
+  parser.addPositionalArgument("infile", "input file (alternative to -f)");
+  parser.addPositionalArgument("outfile","output file (alternative to -F)");
+
+  parser.process(app);
+
+  QString infile("");
+  QString outfile("");
+  if (parser.positionalArguments().size() > 2) {
+    qCritical() << qPrintable(app.applicationName()) << ": too many positional arguments";
+    exit(1);
+  } else if (parser.positionalArguments().size() == 2) {
+    infile = parser.positionalArguments().at(0);
+    outfile = parser.positionalArguments().at(1);
+  } else if (parser.positionalArguments().size() == 1) {
+    infile = parser.positionalArguments().at(0);
+  }
+
+  if (parser.isSet(inputFileOption)) {
+    infile = parser.value(inputFileOption);
+  }
+
+  if (parser.isSet(outputFileOption)) {
+    outfile = parser.value(outputFileOption);
+  }
+
+  exit(process_files(infile, outfile));
 }
