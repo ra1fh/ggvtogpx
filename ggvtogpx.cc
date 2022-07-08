@@ -61,7 +61,7 @@ void track_add_wpt(Route* route, Waypoint* waypoint)
   route->waypoint_list.append(waypoint);
 };
 
-int process_files(const QString& infile, const QString& outfile)
+int process_files(const QString& infile, const QString& outfile, QString& creator)
 {
   GgvBinFormat* format = new GgvBinFormat();
 
@@ -82,7 +82,7 @@ int process_files(const QString& infile, const QString& outfile)
   xml.writeStartDocument();
   xml.writeStartElement(QStringLiteral("gpx"));
   xml.writeAttribute(QStringLiteral("version"), QStringLiteral("1.0"));
-  xml.writeAttribute(QStringLiteral("creator"), QStringLiteral("ggvtogpx"));
+  xml.writeAttribute(QStringLiteral("creator"), creator);
   xml.writeAttribute(QStringLiteral("xmlns"), QStringLiteral("http://www.topografix.com/GPX/1/0"));
   xml.writeTextElement(QStringLiteral("time"), QStringLiteral("1970-01-01T00:00:00Z"));
 
@@ -175,6 +175,9 @@ int main(int argc, char* argv[])
   parser.addHelpOption();
   parser.addVersionOption();
 
+  QCommandLineOption creatorStringOption("C", "creator <creator>", "creator");
+  parser.addOption(creatorStringOption);
+
   QCommandLineOption debugLevelOption("D", "debug <level>", "debug");
   parser.addOption(debugLevelOption);
 
@@ -226,5 +229,10 @@ int main(int argc, char* argv[])
     outfile = parser.value(outputFileOption);
   }
 
-  exit(process_files(infile, outfile));
+  QString creator = "ggvtogpx";
+  if (parser.isSet(creatorStringOption)) {
+    creator = parser.value(creatorStringOption);
+  }
+
+  exit(process_files(infile, outfile, creator));
 }
