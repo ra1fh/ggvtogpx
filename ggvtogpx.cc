@@ -122,12 +122,14 @@ int process_files(const QString& infile, const QString& outfile)
     }
   }
 
-  xml.writeStartElement(QStringLiteral("bounds"));
-  xml.writeAttribute(QStringLiteral("minlat"), QString::number(minlat, 'f', 9));
-  xml.writeAttribute(QStringLiteral("minlon"), QString::number(minlon, 'f', 9));
-  xml.writeAttribute(QStringLiteral("maxlat"), QString::number(maxlat, 'f', 9));
-  xml.writeAttribute(QStringLiteral("maxlon"), QString::number(maxlon, 'f', 9));
-  xml.writeEndElement();
+  if (! routes.isEmpty() || ! waypoints.isEmpty()) {
+    xml.writeStartElement(QStringLiteral("bounds"));
+    xml.writeAttribute(QStringLiteral("minlat"), QString::number(minlat, 'f', 9));
+    xml.writeAttribute(QStringLiteral("minlon"), QString::number(minlon, 'f', 9));
+    xml.writeAttribute(QStringLiteral("maxlat"), QString::number(maxlat, 'f', 9));
+    xml.writeAttribute(QStringLiteral("maxlon"), QString::number(maxlon, 'f', 9));
+    xml.writeEndElement();
+  }
 
   for (auto&& waypoint : std::as_const(waypoints)) {
     xml.writeStartElement(QStringLiteral("wpt"));
