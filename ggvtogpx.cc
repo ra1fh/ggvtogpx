@@ -133,9 +133,11 @@ int process_files(const QString& infile, const QString& outfile)
     xml.writeStartElement(QStringLiteral("wpt"));
     xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', 9));
     xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', 9));
-    xml.writeTextElement(QStringLiteral("name"), waypoint->description);
-    xml.writeTextElement(QStringLiteral("cmt"), waypoint->description);
-    xml.writeTextElement(QStringLiteral("desc"), waypoint->description);
+    if (! waypoint->description.isEmpty()) {
+      xml.writeTextElement(QStringLiteral("name"), waypoint->description);
+      xml.writeTextElement(QStringLiteral("cmt"), waypoint->description);
+      xml.writeTextElement(QStringLiteral("desc"), waypoint->description);
+    }
     xml.writeEndElement();
   }
 
