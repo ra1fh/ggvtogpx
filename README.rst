@@ -1,3 +1,6 @@
+.. image:: https://github.com/ra1fh/ggvtogpx/actions/workflows/build.yml/badge.svg
+    :target: https://github.com/ra1fh/ggvtogpx/actions/workflows/build.yml
+
 ggvtogpx
 ========
 
