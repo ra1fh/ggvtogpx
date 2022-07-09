@@ -31,11 +31,11 @@
 static QList<Waypoint*> waypoints;
 static QList<Route*> routes;
 
-static int debug_level;
+static int ggvtogpx_debug_level = 0;
 
 int get_debug_level()
 {
-  return debug_level;
+  return ggvtogpx_debug_level;
 };
 
 void waypt_add(Waypoint* waypoint)
@@ -198,12 +198,12 @@ int main(int argc, char* argv[])
 
   parser.process(app);
 
-  debug_level = 0;
+  ggvtogpx_debug_level = 0;
   if (parser.isSet(debugLevelOption)) {
     bool ok;
     int num = parser.value(debugLevelOption).toInt(&ok);
     if (ok && num >= 0 && num <= 9) {
-      debug_level = num;
+      ggvtogpx_debug_level = num;
     } else {
       qCritical() << qPrintable(app.applicationName()) << ": invalid debug level";
     }
