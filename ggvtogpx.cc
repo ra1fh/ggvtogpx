@@ -42,7 +42,7 @@ int get_debug_level()
 
 void waypt_add(Waypoint* waypoint)
 {
-  if (get_debug_level() > 1) {
+  if (get_debug_level() > 2) {
     qDebug("waypt_add()");
   }
   waypoints.append(waypoint);
@@ -50,14 +50,14 @@ void waypt_add(Waypoint* waypoint)
 
 void track_add_head(Route* route)
 {
-  if (get_debug_level() > 1) {
+  if (get_debug_level() > 2) {
     qDebug("track_add_head()");
   }
   routes.append(route);
 };
 void track_add_wpt(Route* route, Waypoint* waypoint)
 {
-  if (get_debug_level() > 1) {
+  if (get_debug_level() > 2) {
     qDebug("track_add_wpt()");
   }
   route->waypoint_list.append(waypoint);
@@ -65,6 +65,10 @@ void track_add_wpt(Route* route, Waypoint* waypoint)
 
 int process_files(const QString& infile, const QString& outfile, QString& creator)
 {
+  if (get_debug_level() > 2) {
+    qDebug() << "process_files: infile =" << infile << " outfile =" << outfile << " creator =" << creator;
+  }
+
   GgvBinFormat* format = new GgvBinFormat();
 
   format->rd_init(infile);
