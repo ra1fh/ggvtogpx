@@ -24,6 +24,7 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QFile>
+#include <QScopedPointer>
 #include <QXmlStreamWriter>
 
 #include "defs.h"
@@ -75,16 +76,30 @@ int process_files(const QString& infile, const QString& outfile, QString& creato
   format->read();
   format->rd_deinit();
 
-  QFile ofile(outfile);
-  if (!ofile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    qCritical() << "usage: ggvtogpx <filename>";
-    return 1;
+  // tolerate empty output file to be able to run input code only
+  if (outfile.isEmpty()) {
+    return 0;
+  }
+
+  QScopedPointer<QFile> ofile;
+  if (outfile == "-") {
+    ofile.reset(new QFile());
+    if (!ofile->open(stdout, QIODevice::WriteOnly | QIODevice::Text)) {
+      qCritical() << "error: could not open stdout";
+      return 1;
+    }
+  } else {
+    ofile.reset(new QFile(outfile));
+    if (!ofile->open(QIODevice::WriteOnly | QIODevice::Text)) {
+      qCritical() << "error: could not open" << outfile;
+      return 1;
+    }
   }
 
   QXmlStreamWriter xml;
   xml.setAutoFormatting(true);
   xml.setAutoFormattingIndent(2);
-  xml.setDevice(&ofile);
+  xml.setDevice(ofile.get());
   xml.writeStartDocument();
   xml.writeStartElement(QStringLiteral("gpx"));
   xml.writeAttribute(QStringLiteral("version"), QStringLiteral("1.0"));

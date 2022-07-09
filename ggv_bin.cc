@@ -25,6 +25,7 @@
 #include <QDataStream>
 #include <QDebug>
 #include <QFile>
+#include <QScopedPointer>
 #include <QtEndian>
 
 #include "defs.h"
@@ -480,12 +481,24 @@ GgvBinFormat::ggv_bin_read_v34(QDataStream& stream)
 void
 GgvBinFormat::read()
 {
-  QFile file(read_fname);
-  if (!file.open(QIODevice::ReadOnly)) {
-    fatal(MYNAME ": Error opening file %s\n", qPrintable(read_fname));
+  if (read_fname.isEmpty()) {
+    fatal(MYNAME ": no input file given\n");
   }
 
-  QDataStream stream(&file);
+  QScopedPointer<QFile> file;
+  if (read_fname == "-") {
+    file.reset(new QFile());
+    if (!file->open(stdin, QIODevice::ReadOnly)) {
+      fatal(MYNAME ": Error opening file %s\n", qPrintable(read_fname));
+    }
+  } else {
+    file.reset(new QFile(read_fname));
+    if (!file->open(QIODevice::ReadOnly)) {
+      fatal(MYNAME ": Error opening file %s\n", qPrintable(read_fname));
+    }
+  }
+
+  QDataStream stream(file.get());
   stream.setFloatingPointPrecision(QDataStream::DoublePrecision);
   stream.setByteOrder(QDataStream::LittleEndian);
 
@@ -506,7 +519,7 @@ GgvBinFormat::read()
     fatal(MYNAME ": Unsupported file format\n");
   }
 
-  file.close();
+  file->close();
 }
 
 void
