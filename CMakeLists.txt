@@ -23,7 +23,7 @@ install(TARGETS ggvtogpx)
 add_custom_target(style
   astyle --options=astylerc *.h *.cc)
 
-set (TestsToRun ggv_bin-sample-v2 ggv_bin-sample-v3)
+set (TestsToRun ggv_bin-sample-v2 ggv_bin-sample-v3 ggv_bin-sample-v4)
 
 # Add all the ADD_TEST for each test
 foreach (test ${TestsToRun})
