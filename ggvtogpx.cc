@@ -21,6 +21,7 @@
 
 #include <QCoreApplication>
 #include <QCommandLineParser>
+#include <QDateTime>
 #include <QDebug>
 #include <QFile>
 #include <QXmlStreamWriter>
@@ -32,6 +33,7 @@ static QList<Waypoint*> waypoints;
 static QList<Route*> routes;
 
 static int ggvtogpx_debug_level = 0;
+static bool ggvtogpx_testmode = 0;
 
 int get_debug_level()
 {
@@ -84,7 +86,14 @@ int process_files(const QString& infile, const QString& outfile, QString& creato
   xml.writeAttribute(QStringLiteral("version"), QStringLiteral("1.0"));
   xml.writeAttribute(QStringLiteral("creator"), creator);
   xml.writeAttribute(QStringLiteral("xmlns"), QStringLiteral("http://www.topografix.com/GPX/1/0"));
-  xml.writeTextElement(QStringLiteral("time"), QStringLiteral("1970-01-01T00:00:00Z"));
+
+  QString time;
+  if (ggvtogpx_testmode) {
+    time = QDateTime::fromSecsSinceEpoch(0, Qt::UTC).toString(Qt::ISODate);
+  } else {
+    time = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+  }
+  xml.writeTextElement(QStringLiteral("time"), time);
 
   double minlat, minlon, maxlat, maxlon;
   minlat = 360;
@@ -233,6 +242,8 @@ int main(int argc, char* argv[])
   if (parser.isSet(creatorStringOption)) {
     creator = parser.value(creatorStringOption);
   }
+
+  ggvtogpx_testmode = qEnvironmentVariableIsSet("GGVTOGPX_TESTMODE");
 
   exit(process_files(infile, outfile, creator));
 }
