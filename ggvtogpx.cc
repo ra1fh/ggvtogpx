@@ -188,9 +188,6 @@ int main(int argc, char* argv[])
   parser.addHelpOption();
   parser.addVersionOption();
 
-  QCommandLineOption creatorStringOption("C", "creator <creator>", "creator");
-  parser.addOption(creatorStringOption);
-
   QCommandLineOption debugLevelOption("D", "debug <level>", "debug");
   parser.addOption(debugLevelOption);
 
@@ -242,12 +239,18 @@ int main(int argc, char* argv[])
     outfile = parser.value(outputFileOption);
   }
 
-  QString creator = "ggvtogpx";
-  if (parser.isSet(creatorStringOption)) {
-    creator = parser.value(creatorStringOption);
+  QString creator;
+  if (qEnvironmentVariableIsSet("GGVTOGPX_CREATOR")) {
+    creator = qEnvironmentVariable("GGVTOGPX_CREATOR");
+  } else {
+    creator = "ggvtogpx";
   }
 
-  ggvtogpx_testmode = qEnvironmentVariableIsSet("GGVTOGPX_TESTMODE");
+  if (qEnvironmentVariableIsSet("GGVTOGPX_TESTMODE")) {
+    ggvtogpx_testmode = true;
+  } else {
+    ggvtogpx_testmode = false;
+  }
 
   exit(process_files(infile, outfile, creator));
 }
