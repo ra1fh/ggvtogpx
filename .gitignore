@@ -1,0 +1,13 @@
+.qt/
+CMakeFiles/
+Testing/
+ggvtogpx_autogen/
+testdata/*.out
+CMakeCache.txt
+CTestTestfile.cmake
+DartConfiguration.tcl
+Makefile
+cmake_install.cmake
+compile_commands.json
+ggvtogpx
+install_manifest.txt
