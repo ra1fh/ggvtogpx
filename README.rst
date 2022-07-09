@@ -29,9 +29,10 @@ Building and Installing
 
 Requirements:
 
-* QT 6
+* Qt5 or Qt6
 * CMake
 * C++17 compiler
+* Tested on Ubuntu 20.04 and 22.04
 
 Compilation:
 
