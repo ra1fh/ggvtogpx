@@ -199,7 +199,10 @@ int main(int argc, char* argv[])
   QCoreApplication::setApplicationVersion("1.0");
 
   QCommandLineParser parser;
-  parser.setApplicationDescription("GeoGrid Viewer to GPX Converter");
+  parser.setApplicationDescription("\n"
+                                   "Geogrid-Viewer OVL to GPX Converter. The input and output file\n"
+                                   "options accept '-' for stdin or stdout. If no output file is\n"
+                                   "given, the GPX output code will not run (useful for debugging).");
   parser.addHelpOption();
   parser.addVersionOption();
 
