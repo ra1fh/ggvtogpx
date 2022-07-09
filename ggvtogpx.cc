@@ -34,7 +34,6 @@ static QList<Waypoint*> waypoints;
 static QList<Route*> routes;
 
 static int ggvtogpx_debug_level = 0;
-static bool ggvtogpx_testmode = 0;
 
 int get_debug_level()
 {
@@ -64,7 +63,7 @@ void track_add_wpt(Route* route, Waypoint* waypoint)
   route->waypoint_list.append(waypoint);
 };
 
-int process_files(const QString& infile, const QString& outfile, QString& creator)
+static int process_files(const QString& infile, const QString& outfile, QString& creator, bool testmode)
 {
   if (get_debug_level() > 2) {
     qDebug() << "process_files: infile =" << infile << " outfile =" << outfile << " creator =" << creator;
@@ -107,7 +106,7 @@ int process_files(const QString& infile, const QString& outfile, QString& creato
   xml.writeAttribute(QStringLiteral("xmlns"), QStringLiteral("http://www.topografix.com/GPX/1/0"));
 
   QString time;
-  if (ggvtogpx_testmode) {
+  if (testmode) {
     time = QDateTime::fromSecsSinceEpoch(0, Qt::UTC).toString(Qt::ISODate);
   } else {
     time = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
@@ -226,7 +225,6 @@ int main(int argc, char* argv[])
 
   parser.process(app);
 
-  ggvtogpx_debug_level = 0;
   if (parser.isSet(debugLevelOption)) {
     bool ok;
     int num = parser.value(debugLevelOption).toInt(&ok);
@@ -264,11 +262,12 @@ int main(int argc, char* argv[])
     creator = "ggvtogpx";
   }
 
+  bool testmode;
   if (qEnvironmentVariableIsSet("GGVTOGPX_TESTMODE")) {
-    ggvtogpx_testmode = true;
+    testmode = true;
   } else {
-    ggvtogpx_testmode = false;
+    testmode = false;
   }
 
-  exit(process_files(infile, outfile, creator));
+  exit(process_files(infile, outfile, creator, testmode));
 }
