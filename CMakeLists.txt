@@ -13,6 +13,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 add_executable(ggvtogpx
   fatal.cc
   ggv_bin.cc
+  ggv_ovl.cc
   ggvtogpx.cc
 )
 
@@ -23,11 +24,20 @@ install(TARGETS ggvtogpx)
 add_custom_target(style
   astyle --options=astylerc *.h *.cc)
 
-set (TestsToRun ggv_bin-sample-v2 ggv_bin-sample-v3 ggv_bin-sample-v4)
+set (BinTestsToRun ggv_bin-sample-v2 ggv_bin-sample-v3 ggv_bin-sample-v4)
 
 # Add all the ADD_TEST for each test
-foreach (test ${TestsToRun})
-  add_test (NAME ${test}-generate COMMAND ggvtogpx testdata/${test}.ovl testdata/${test}.out)
+foreach (test ${BinTestsToRun})
+  add_test (NAME ${test}-generate COMMAND ggvtogpx -i ggv_bin testdata/${test}.ovl testdata/${test}.out)
+  add_test (NAME ${test}-diff COMMAND ${CMAKE_COMMAND} -E compare_files testdata/${test}.gpx testdata/${test}.out)
+  set_tests_properties(${test}-generate PROPERTIES ENVIRONMENT "GGVTOGPX_TESTMODE=1")
+endforeach ()
+
+set (OvlTestsToRun ggv_ovl-sample)
+
+# Add all the ADD_TEST for each test
+foreach (test ${OvlTestsToRun})
+  add_test (NAME ${test}-generate COMMAND ggvtogpx -i ggv_ovl testdata/${test}.ovl testdata/${test}.out)
   add_test (NAME ${test}-diff COMMAND ${CMAKE_COMMAND} -E compare_files testdata/${test}.gpx testdata/${test}.out)
   set_tests_properties(${test}-generate PROPERTIES ENVIRONMENT "GGVTOGPX_TESTMODE=1")
 endforeach ()

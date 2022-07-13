@@ -29,9 +29,11 @@
 
 #include "defs.h"
 #include "ggv_bin.h"
+#include "ggv_ovl.h"
 
 static QList<Waypoint*> waypoints;
 static QList<Route*> routes;
+static QList<Route*> tracks;
 
 static int ggvtogpx_debug_level = 0;
 
@@ -48,13 +50,15 @@ void waypt_add(Waypoint* waypoint)
   waypoints.append(waypoint);
 };
 
+
 void track_add_head(Route* route)
 {
   if (get_debug_level() > 2) {
     qDebug("track_add_head()");
   }
-  routes.append(route);
+  tracks.append(route);
 };
+
 void track_add_wpt(Route* route, Waypoint* waypoint)
 {
   if (get_debug_level() > 2) {
@@ -63,13 +67,27 @@ void track_add_wpt(Route* route, Waypoint* waypoint)
   route->waypoint_list.append(waypoint);
 };
 
-static int process_files(const QString& infile, const QString& outfile, QString& creator, bool testmode)
+void route_add_head(Route* route)
+{
+  if (get_debug_level() > 2) {
+    qDebug("route_add_head()");
+  }
+  routes.append(route);
+};
+
+void route_add_wpt(Route* route, Waypoint* waypoint)
+{
+  if (get_debug_level() > 2) {
+    qDebug("route_add_wpt()");
+  }
+  route->waypoint_list.append(waypoint);
+};
+
+static int process_files(Format* format, const QString& infile, const QString& outfile, QString& creator, bool testmode)
 {
   if (get_debug_level() > 2) {
     qDebug() << "process_files: infile =" << infile << " outfile =" << outfile << " creator =" << creator;
   }
-
-  GgvBinFormat* format = new GgvBinFormat();
 
   format->rd_init(infile);
   format->read();
@@ -134,6 +152,22 @@ static int process_files(const QString& infile, const QString& outfile, QString&
       }
     }
   }
+  for (auto&& track : std::as_const(tracks)) {
+    for (auto&& waypoint : std::as_const(track->waypoint_list)) {
+      if (waypoint->latitude > maxlat) {
+        maxlat = waypoint->latitude;
+      }
+      if (waypoint->latitude < minlat) {
+        minlat = waypoint->latitude;
+      }
+      if (waypoint->longitude > maxlon) {
+        maxlon = waypoint->longitude;
+      }
+      if (waypoint->longitude < minlon) {
+        minlon = waypoint->longitude;
+      }
+    }
+  }
   for (auto&& waypoint : std::as_const(waypoints)) {
     if (waypoint->latitude > maxlat) {
       maxlat = waypoint->latitude;
@@ -149,7 +183,7 @@ static int process_files(const QString& infile, const QString& outfile, QString&
     }
   }
 
-  if (! routes.isEmpty() || ! waypoints.isEmpty()) {
+  if (! routes.isEmpty() || ! tracks.isEmpty() || ! waypoints.isEmpty()) {
     xml.writeStartElement(QStringLiteral("bounds"));
     xml.writeAttribute(QStringLiteral("minlat"), QString::number(minlat, 'f', 9));
     xml.writeAttribute(QStringLiteral("minlon"), QString::number(minlon, 'f', 9));
@@ -171,12 +205,29 @@ static int process_files(const QString& infile, const QString& outfile, QString&
   }
 
   for (auto&& route : std::as_const(routes)) {
-    xml.writeStartElement(QStringLiteral("trk"));
+    xml.writeStartElement(QStringLiteral("rte"));
     if (! route->route_name.isEmpty()) {
       xml.writeTextElement(QStringLiteral("name"), route->route_name);
     }
-    xml.writeStartElement(QStringLiteral("trkseg"));
     for (auto&& waypoint : std::as_const(route->waypoint_list)) {
+      xml.writeStartElement(QStringLiteral("rtept"));
+      xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', 9));
+      xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', 9));
+      if (! waypoint->description.isEmpty()) {
+        xml.writeTextElement(QStringLiteral("name"), waypoint->description);
+      }
+      xml.writeEndElement();
+    }
+    xml.writeEndElement();
+  }
+
+  for (auto&& track : std::as_const(tracks)) {
+    xml.writeStartElement(QStringLiteral("trk"));
+    if (! track->route_name.isEmpty()) {
+      xml.writeTextElement(QStringLiteral("name"), track->route_name);
+    }
+    xml.writeStartElement(QStringLiteral("trkseg"));
+    for (auto&& waypoint : std::as_const(track->waypoint_list)) {
       xml.writeStartElement(QStringLiteral("trkpt"));
       xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', 9));
       xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', 9));
@@ -185,6 +236,7 @@ static int process_files(const QString& infile, const QString& outfile, QString&
     xml.writeEndElement();
     xml.writeEndElement();
   }
+
 
   xml.writeEndElement();
   xml.writeEndDocument();
@@ -269,5 +321,16 @@ int main(int argc, char* argv[])
     testmode = false;
   }
 
-  exit(process_files(infile, outfile, creator, testmode));
+  Format* format;
+  if (parser.isSet(inputTypeOption)) {
+    QString formatName = parser.value(inputTypeOption);
+    if (formatName == "ggv_bin") {
+      format = new GgvBinFormat();
+    } else {
+      format = new GgvOvlFormat();
+    }
+  }
+
+
+  exit(process_files(format, infile, outfile, creator, testmode));
 }

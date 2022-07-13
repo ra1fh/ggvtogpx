@@ -85,5 +85,7 @@ int get_debug_level();
 void waypt_add(Waypoint*);
 void track_add_head(Route*);
 void track_add_wpt(Route*, Waypoint*);
+void route_add_head(Route*);
+void route_add_wpt(Route*, Waypoint*);
 
 #endif
