@@ -1,8 +1,8 @@
 /*
 
-    Support for "GeoGrid Viewer ascii overlay files".
+    Support for GPX writing
 
-    Copyright (C) 2022 Ralf Horstmann <ralf@ackstorm.de>
+    Copyright (C) 2016-2020 Ralf Horstmann <ralf@ackstorm.de>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
- */
-#ifndef GGV_OVL_H_INCLUDED_
-#define GGV_OVL_H_INCLUDED_
+*/
+#ifndef GPX_H_INCLUDED_
+#define GPX_H_INCLUDED_
 
 #include <QIODevice>
 #include <QString>
@@ -28,13 +28,18 @@
 #include "format.h"
 #include "geodata.h"
 
-class GgvOvlFormat : public Format
+class GpxFormat : public Format
 {
 public:
-  GgvOvlFormat() {};
-  bool probe([[maybe_unused]] QIODevice* io) override;
-  void read(QIODevice* io, Geodata* geodata) override;
-  const QString getName() override;
+  GpxFormat() : testmode(false) {};
+
+  void write(QIODevice* io, const Geodata* geodata) override;
+  void setCreator(const QString& creator);
+  void setTestmode(bool testmode);
+  virtual const QString getName() override;
+private:
+  QString creator;
+  bool testmode;
 };
 
 #endif

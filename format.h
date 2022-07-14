@@ -1,6 +1,6 @@
 /*
 
-    Support for "GeoGrid Viewer ascii overlay files".
+    Format class
 
     Copyright (C) 2022 Ralf Horstmann <ralf@ackstorm.de>
 
@@ -18,23 +18,35 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
- */
-#ifndef GGV_OVL_H_INCLUDED_
-#define GGV_OVL_H_INCLUDED_
+*/
+
+#ifndef FORMAT_H_INCLUDED_
+#define FORMAT_H_INCLUDED_
 
 #include <QIODevice>
-#include <QString>
 
-#include "format.h"
 #include "geodata.h"
 
-class GgvOvlFormat : public Format
+class Format
 {
 public:
-  GgvOvlFormat() {};
-  bool probe([[maybe_unused]] QIODevice* io) override;
-  void read(QIODevice* io, Geodata* geodata) override;
-  const QString getName() override;
+  explicit Format() : debuglevel(0) {};
+  virtual ~Format() = default;
+
+  Format(const Format&) = delete;
+  Format& operator=(const Format&) = delete;
+  Format(Format&&) = delete;
+  Format& operator=(Format&&) = delete;
+
+  virtual bool probe([[maybe_unused]] QIODevice* io);
+  virtual void read([[maybe_unused]] QIODevice* io, [[maybe_unused]] Geodata* geodata);
+  virtual void write([[maybe_unused]] QIODevice* io, [[maybe_unused]] const Geodata* geodata);
+  virtual const QString getName();
+
+  void setDebugLevel(int _debuglevel);
+  int getDebugLevel();
+protected:
+  int debuglevel;
 };
 
 #endif

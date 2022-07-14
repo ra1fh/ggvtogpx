@@ -4,8 +4,8 @@
 ggvtogpx
 ========
 
-``ggvtogpx`` converts Geogrid-Viewer binary overlay files (OVL) to
-GPX.
+``ggvtogpx`` converts Geogrid-Viewer binary and ASCII overlay files
+(OVL) to GPX.
 
 Geogrid-Viewer has been part of several `Top50
 <https://de.wikipedia.org/wiki/Top50>`_ topographic map products that
@@ -22,10 +22,18 @@ following example shows the first bytes of a version 3.0 file:
     00000000  44 4f 4d 47 56 43 52 44  20 4f 76 6c 66 69 6c 65  |DOMGVCRD Ovlfile|
     00000010  20 56 33 2e 30 3a 00 00  00 08 00 00 00 1e 00 00  | V3.0:..........|
 
+``ggvtogpx`` also supports ASCII overlay file format which looks like
+this:
 
-Some Geogrid-Viewer versions can write overlay files in non-binary
-formats. The ASCII overlay formats and the XML formats (version 5.0)
-are *not supported* by ``ggvtogpx``.
+::
+
+   [Symbol 1]
+   Typ=3
+   Group=1
+   Col=3
+   ...
+
+The XML format (version 5.0) is *not supported* by ``ggvtogpx``.
 
 Building and Installing
 -----------------------
@@ -35,7 +43,7 @@ Requirements:
 * Qt5 or Qt6
 * CMake
 * C++17 compiler
-* Tested on Ubuntu 20.04 and 22.04
+* Tested on Ubuntu 20.04, Ubuntu 22.04, and OpenBSD 7.1
 
 Compilation:
 
@@ -61,16 +69,16 @@ Usage
     Geogrid-Viewer OVL to GPX Converter. The input and output file
     options accept '-' for stdin or stdout. If no output file is
     given, the GPX output code will not run (useful for debugging).
-    
-    Options:
-      -h, --help     Displays help on commandline options.
-      --help-all     Displays help including Qt specific options.
-      -v, --version  Displays version information.
-      -D <debug>     debug <level>
-      -i <type>      input type (ignored)
-      -f <file>      input <file>
-      -o <type>      output type (ignored)
-      -F <file>      output <file>
+
+	Options:
+  	  -h, --help     Displays help on commandline options.
+  	  --help-all     Displays help including Qt specific options.
+  	  -v, --version  Displays version information.
+  	  -D <debug>     debug <level>
+  	  -i <type>      input <type> (ggv_bin, ggv_ovl)
+  	  -f <file>      input <file>
+  	  -o <type>      output <type> (ignored)
+  	  -F <file>      output <file>  
     
     Arguments:
       infile         input file (alternative to -f)

@@ -1,7 +1,8 @@
 /*
-    Functions to indicate inconsistent or fatal conditions.
 
-    Copyright (C) 2002-2014 Robert Lipe, robertlipe+source@gpsbabel.org
+    Format class
+
+    Copyright (C) 2016-2020 Ralf Horstmann <ralf@ackstorm.de>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,30 +18,40 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
- */
+*/
 
-#include <cstdarg>             // for va_end, va_list, va_start
-#include <cstdio>              // for vfprintf, stderr, fflush, fprintf, stdout
-#include <cstdlib>             // for exit
+#include "format.h"
 
-[[noreturn]] void
-fatal(const char* fmt, ...)
+bool
+Format::probe([[maybe_unused]] QIODevice* io)
 {
-  /* flush any buffered standard output */
-  fflush(stdout);
+  return false;
+};
 
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  exit(1);
+void
+Format::read([[maybe_unused]] QIODevice* io, [[maybe_unused]] Geodata* geodata)
+{
 }
 
 void
-warning(const char* fmt, ...)
+Format::write([[maybe_unused]] QIODevice* io, [[maybe_unused]] const Geodata* geodata)
 {
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
 }
+
+const QString
+Format::getName()
+{
+  return "";
+};
+
+void
+Format::setDebugLevel(int _debuglevel)
+{
+  debuglevel = _debuglevel;
+};
+
+int
+Format::getDebugLevel()
+{
+  return debuglevel;
+};

@@ -21,226 +21,113 @@
 
 #include <QCoreApplication>
 #include <QCommandLineParser>
-#include <QDateTime>
 #include <QDebug>
 #include <QFile>
-#include <QScopedPointer>
-#include <QXmlStreamWriter>
 
-#include "defs.h"
+#include <memory>
+
+#include "format.h"
+#include "geodata.h"
 #include "ggv_bin.h"
 #include "ggv_ovl.h"
+#include "gpx.h"
 
-static QList<Waypoint*> waypoints;
-static QList<Route*> routes;
-static QList<Route*> tracks;
-
-static int ggvtogpx_debug_level = 0;
-
-int get_debug_level()
+static void process_files(const QString& formatName, const QString& infileName, const QString& outfileName, const QString& creator, bool testmode, int debug_level)
 {
-  return ggvtogpx_debug_level;
-};
-
-void waypt_add(Waypoint* waypoint)
-{
-  if (get_debug_level() > 2) {
-    qDebug("waypt_add()");
-  }
-  waypoints.append(waypoint);
-};
-
-
-void track_add_head(Route* route)
-{
-  if (get_debug_level() > 2) {
-    qDebug("track_add_head()");
-  }
-  tracks.append(route);
-};
-
-void track_add_wpt(Route* route, Waypoint* waypoint)
-{
-  if (get_debug_level() > 2) {
-    qDebug("track_add_wpt()");
-  }
-  route->waypoint_list.append(waypoint);
-};
-
-void route_add_head(Route* route)
-{
-  if (get_debug_level() > 2) {
-    qDebug("route_add_head()");
-  }
-  routes.append(route);
-};
-
-void route_add_wpt(Route* route, Waypoint* waypoint)
-{
-  if (get_debug_level() > 2) {
-    qDebug("route_add_wpt()");
-  }
-  route->waypoint_list.append(waypoint);
-};
-
-static int process_files(Format* format, const QString& infile, const QString& outfile, QString& creator, bool testmode)
-{
-  if (get_debug_level() > 2) {
-    qDebug() << "process_files: infile =" << infile << " outfile =" << outfile << " creator =" << creator;
+  if (debug_level > 2) {
+    qDebug() << "process_files: format =" << formatName << " infile =" << infileName << " outfile =" << outfileName << " creator =" << creator;
   }
 
-  format->rd_init(infile);
-  format->read();
-  format->rd_deinit();
+  Geodata geodata;
+  geodata.setDebugLevel(debug_level);
 
-  // tolerate empty output file to be able to run input code only
-  if (outfile.isEmpty()) {
-    return 0;
+  // Open the input file
+  std::unique_ptr<QFile> infile;
+  if (infileName == "-") {
+    infile = std::make_unique<QFile>();
+    if (!infile->open(stdin, QIODevice::ReadOnly)) {
+      qCritical() << "error opening file" << infileName;
+      exit(1);
+    }
+  } else {
+    infile = std::make_unique<QFile>(infileName);
+    if (!infile->open(QIODevice::ReadOnly)) {
+      qCritical() << "error opening file" << infileName;
+      exit(1);
+    }
   }
 
-  QScopedPointer<QFile> ofile;
-  if (outfile == "-") {
-    ofile.reset(new QFile());
-    if (!ofile->open(stdout, QIODevice::WriteOnly | QIODevice::Text)) {
+  // Instantiate input formats
+  std::list<std::unique_ptr<Format>> formats;
+  formats.push_back(std::make_unique<GgvBinFormat>());
+  formats.push_back(std::make_unique<GgvOvlFormat>());
+
+  // Determine which input format to use (either auto-probe or by
+  // command line switch)
+  Format* format = NULL;
+  if (formatName == "") {
+    for (auto&& f : std::as_const(formats)) {
+      if (f->probe(infile.get())) {
+        if (debug_level > 0) {
+          qDebug().nospace() << "auto-probing " << f->getName() << ": true";
+        }
+        format = f.get();
+        break;
+      } else {
+        if (debug_level > 0) {
+          qDebug().nospace() << "auto-probing " << f->getName() << ": false";
+        }
+      }
+    }
+    if (!format) {
+      qCritical() << "auto-probing failed";
+      exit(1);
+    }
+  } else {
+    for (auto&& f : std::as_const(formats)) {
+      if (formatName == f->getName()) {
+        format = f.get();
+        break;
+      }
+    }
+    if (!format) {
+      qCritical() << "no such input format:" << formatName;
+      exit(1);
+    }
+  }
+
+  // Read the intput file
+  format->setDebugLevel(debug_level);
+  format->read(infile.get(), &geodata);
+
+  // Tolerate empty output file to be able to run input code only with
+  // debug enabled
+  if (outfileName.isEmpty()) {
+    return;
+  }
+
+  // Open the output file
+  std::unique_ptr<QFile> outfile;
+  if (outfileName == "-") {
+    outfile = std::make_unique<QFile>();
+    if (!outfile->open(stdout, QIODevice::WriteOnly | QIODevice::Text)) {
       qCritical() << "error: could not open stdout";
-      return 1;
+      exit(1);
     }
   } else {
-    ofile.reset(new QFile(outfile));
-    if (!ofile->open(QIODevice::WriteOnly | QIODevice::Text)) {
-      qCritical() << "error: could not open" << outfile;
-      return 1;
+    outfile = std::make_unique<QFile>(outfileName);
+    if (!outfile->open(QIODevice::WriteOnly | QIODevice::Text)) {
+      qCritical() << "error: could not open" << outfileName;
+      exit(1);
     }
   }
 
-  QXmlStreamWriter xml;
-  xml.setAutoFormatting(true);
-  xml.setAutoFormattingIndent(2);
-  xml.setDevice(ofile.get());
-  xml.writeStartDocument();
-  xml.writeStartElement(QStringLiteral("gpx"));
-  xml.writeAttribute(QStringLiteral("version"), QStringLiteral("1.0"));
-  xml.writeAttribute(QStringLiteral("creator"), creator);
-  xml.writeAttribute(QStringLiteral("xmlns"), QStringLiteral("http://www.topografix.com/GPX/1/0"));
-
-  QString time;
-  if (testmode) {
-    time = QDateTime::fromSecsSinceEpoch(0, Qt::UTC).toString(Qt::ISODate);
-  } else {
-    time = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
-  }
-  xml.writeTextElement(QStringLiteral("time"), time);
-
-  double minlat, minlon, maxlat, maxlon;
-  minlat = 360;
-  minlon = 360;
-  maxlat = 0;
-  maxlon = 0;
-  for (auto&& route : std::as_const(routes)) {
-    for (auto&& waypoint : std::as_const(route->waypoint_list)) {
-      if (waypoint->latitude > maxlat) {
-        maxlat = waypoint->latitude;
-      }
-      if (waypoint->latitude < minlat) {
-        minlat = waypoint->latitude;
-      }
-      if (waypoint->longitude > maxlon) {
-        maxlon = waypoint->longitude;
-      }
-      if (waypoint->longitude < minlon) {
-        minlon = waypoint->longitude;
-      }
-    }
-  }
-  for (auto&& track : std::as_const(tracks)) {
-    for (auto&& waypoint : std::as_const(track->waypoint_list)) {
-      if (waypoint->latitude > maxlat) {
-        maxlat = waypoint->latitude;
-      }
-      if (waypoint->latitude < minlat) {
-        minlat = waypoint->latitude;
-      }
-      if (waypoint->longitude > maxlon) {
-        maxlon = waypoint->longitude;
-      }
-      if (waypoint->longitude < minlon) {
-        minlon = waypoint->longitude;
-      }
-    }
-  }
-  for (auto&& waypoint : std::as_const(waypoints)) {
-    if (waypoint->latitude > maxlat) {
-      maxlat = waypoint->latitude;
-    }
-    if (waypoint->latitude < minlat) {
-      minlat = waypoint->latitude;
-    }
-    if (waypoint->longitude > maxlon) {
-      maxlon = waypoint->longitude;
-    }
-    if (waypoint->longitude < minlon) {
-      minlon = waypoint->longitude;
-    }
-  }
-
-  if (! routes.isEmpty() || ! tracks.isEmpty() || ! waypoints.isEmpty()) {
-    xml.writeStartElement(QStringLiteral("bounds"));
-    xml.writeAttribute(QStringLiteral("minlat"), QString::number(minlat, 'f', 9));
-    xml.writeAttribute(QStringLiteral("minlon"), QString::number(minlon, 'f', 9));
-    xml.writeAttribute(QStringLiteral("maxlat"), QString::number(maxlat, 'f', 9));
-    xml.writeAttribute(QStringLiteral("maxlon"), QString::number(maxlon, 'f', 9));
-    xml.writeEndElement();
-  }
-
-  for (auto&& waypoint : std::as_const(waypoints)) {
-    xml.writeStartElement(QStringLiteral("wpt"));
-    xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', 9));
-    xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', 9));
-    if (! waypoint->description.isEmpty()) {
-      xml.writeTextElement(QStringLiteral("name"), waypoint->description);
-      xml.writeTextElement(QStringLiteral("cmt"), waypoint->description);
-      xml.writeTextElement(QStringLiteral("desc"), waypoint->description);
-    }
-    xml.writeEndElement();
-  }
-
-  for (auto&& route : std::as_const(routes)) {
-    xml.writeStartElement(QStringLiteral("rte"));
-    if (! route->route_name.isEmpty()) {
-      xml.writeTextElement(QStringLiteral("name"), route->route_name);
-    }
-    for (auto&& waypoint : std::as_const(route->waypoint_list)) {
-      xml.writeStartElement(QStringLiteral("rtept"));
-      xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', 9));
-      xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', 9));
-      if (! waypoint->description.isEmpty()) {
-        xml.writeTextElement(QStringLiteral("name"), waypoint->description);
-      }
-      xml.writeEndElement();
-    }
-    xml.writeEndElement();
-  }
-
-  for (auto&& track : std::as_const(tracks)) {
-    xml.writeStartElement(QStringLiteral("trk"));
-    if (! track->route_name.isEmpty()) {
-      xml.writeTextElement(QStringLiteral("name"), track->route_name);
-    }
-    xml.writeStartElement(QStringLiteral("trkseg"));
-    for (auto&& waypoint : std::as_const(track->waypoint_list)) {
-      xml.writeStartElement(QStringLiteral("trkpt"));
-      xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', 9));
-      xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', 9));
-      xml.writeEndElement();
-    }
-    xml.writeEndElement();
-    xml.writeEndElement();
-  }
-
-
-  xml.writeEndElement();
-  xml.writeEndDocument();
-  return 0;
+  // Write GPX
+  GpxFormat gpx;
+  gpx.setCreator(creator);
+  gpx.setTestmode(testmode);
+  gpx.write(outfile.get(), &geodata);
+  outfile.get()->close();
 }
 
 int main(int argc, char* argv[])
@@ -260,13 +147,13 @@ int main(int argc, char* argv[])
   QCommandLineOption debugLevelOption("D", "debug <level>", "debug");
   parser.addOption(debugLevelOption);
 
-  QCommandLineOption inputTypeOption("i", "input type (ignored)", "type");
+  QCommandLineOption inputTypeOption("i", "input <type> (ggv_bin, ggv_ovl)", "type");
   parser.addOption(inputTypeOption);
 
   QCommandLineOption inputFileOption("f", "input <file>", "file");
   parser.addOption(inputFileOption);
 
-  QCommandLineOption outputTypeOption("o", "output type (ignored)", "type");
+  QCommandLineOption outputTypeOption("o", "output <type> (ignored)", "type");
   parser.addOption(outputTypeOption);
 
   QCommandLineOption outputFileOption("F", "output <file>", "file");
@@ -277,11 +164,12 @@ int main(int argc, char* argv[])
 
   parser.process(app);
 
+  int debug_level = 0;
   if (parser.isSet(debugLevelOption)) {
-    bool ok;
+    bool ok = false;
     int num = parser.value(debugLevelOption).toInt(&ok);
     if (ok && num >= 0 && num <= 9) {
-      ggvtogpx_debug_level = num;
+      debug_level = num;
     } else {
       qCritical() << qPrintable(app.applicationName()) << ": invalid debug level";
     }
@@ -307,30 +195,21 @@ int main(int argc, char* argv[])
     outfile = parser.value(outputFileOption);
   }
 
-  QString creator;
+  QString creator = "ggvtogpx";
   if (qEnvironmentVariableIsSet("GGVTOGPX_CREATOR")) {
     creator = qEnvironmentVariable("GGVTOGPX_CREATOR");
-  } else {
-    creator = "ggvtogpx";
   }
 
-  bool testmode;
+  bool testmode = false;
   if (qEnvironmentVariableIsSet("GGVTOGPX_TESTMODE")) {
     testmode = true;
-  } else {
-    testmode = false;
   }
 
-  Format* format;
+  QString formatName;
   if (parser.isSet(inputTypeOption)) {
-    QString formatName = parser.value(inputTypeOption);
-    if (formatName == "ggv_bin") {
-      format = new GgvBinFormat();
-    } else {
-      format = new GgvOvlFormat();
-    }
+    formatName = parser.value(inputTypeOption);
   }
 
-
-  exit(process_files(format, infile, outfile, creator, testmode));
+  process_files(formatName, infile, outfile, creator, testmode, debug_level);
+  exit(0);
 }

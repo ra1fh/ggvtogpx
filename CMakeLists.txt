@@ -7,11 +7,52 @@ include(CTest)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(ENABLE_CLANG_TIDY OFF CACHE BOOL "Add clang-tidy automatically to builds")
+if (ENABLE_CLANG_TIDY)
+  find_program (CLANG_TIDY_EXE NAMES "clang-tidy")
+  if (CLANG_TIDY_EXE)
+    message(STATUS "Found clang-tidy: ${CLANG_TIDY_EXE}")
+    set(CLANG_TIDY_CHECKS "google-*,cppcoreguidelines-*,-cppcoreguidelines-avoid-magic-numbers")
+    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}"
+      CACHE STRING "" FORCE)
+	list(
+	  APPEND CMAKE_CXX_CLANG_TIDY
+	  "-checks=${CLANG_TIDY_CHECKS}"
+	  "-header-filter='${CMAKE_SOURCE_DIR}/*'")
+  else()
+    message(AUTHOR_WARNING "clang-tidy not found!")
+    set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE) # delete it
+  endif()
+endif()
+
+set(ENABLE_CPPCHECK OFF CACHE BOOL "Add cppcheck automatically to builds")
+if (ENABLE_CPPCHECK)
+  find_program (CPPCHECK_EXE NAMES "cppcheck")
+  if (CPPCHECK_EXE)
+    message(STATUS "Found cppcheck: ${CPPCHECK_EXE}")
+	set(CMAKE_CXX_CPPCHECK "${CPPCHECK_EXE}")
+	list(
+	  APPEND CMAKE_CXX_CPPCHECK
+	  "--language=c++"
+	  "--std=c++17"
+	  "--enable=all"
+	  "--suppress=missingIncludeSystem"
+	  "--suppress=unusedFunction")
+  else()
+    message(AUTHOR_WARNING "cppcheck not found!")
+    set(CMAKE_CXX_CPPCHECK "" CACHE STRING "" FORCE) # delete it
+  endif()
+endif()
+
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 
+add_compile_options(-Wall -Wextra)
+
 add_executable(ggvtogpx
-  fatal.cc
+  format.cc
+  geodata.cc
+  gpx.cc
   ggv_bin.cc
   ggv_ovl.cc
   ggvtogpx.cc

@@ -21,13 +21,12 @@
 
  */
 
-#include <QString>
 #include <QDebug>
+#include <QSettings>
+#include <QString>
+#include <QTemporaryFile>
 
-#include "defs.h"
 #include "ggv_ovl.h"
-
-#define MYNAME "ggv_ovl"
 
 enum OVL_SYMBOL_TYP {
   OVL_SYMBOL_BITMAP = 1,
@@ -48,123 +47,99 @@ enum OVL_SYMBOL_TYP {
 		# "art":   line-style
  */
 
-static int track_ct, route_ct, route_points;
-
-void
-GgvOvlFormat::rd_init(const QString& fname)
+bool
+GgvOvlFormat::probe([[maybe_unused]] QIODevice* io)
 {
-  inifile = new QSettings(fname, QSettings::IniFormat);
-
-
-  if (get_debug_level() > 2) {
-    qDebug() << MYNAME << "rd_init() fname:" << fname;
-  }
-  route_ct = 0;
-  track_ct = 0;
-  route_points = 0;
+  // not implemented yet
+  return false;
 }
 
 void
-GgvOvlFormat::rd_deinit()
+GgvOvlFormat::read(QIODevice* io, Geodata* geodata)
 {
-  delete inifile;
-  inifile = 0;
-}
+  // QSettings does not handle QIODevice. Therefore we write
+  // the data to a tempfile here to be able to keep the nice
+  // generic interface with QIODevice
+  QTemporaryFile tempfile;
+  tempfile.open();
+  tempfile.write(io->readAll());
+  tempfile.close();
 
-void
-GgvOvlFormat::read()
-{
-  int symbols = inifile->value("Overlay/Symbols", 0).toInt();
-  if (get_debug_level() > 1) {
-    qDebug() << MYNAME << "read() symbols:" << symbols;
+  QSettings inifile(tempfile.fileName(), QSettings::IniFormat);
+
+  int route_count = 0;
+  int track_count = 0;
+  int waypoint_count = 0;
+  int symbols = inifile.value("Overlay/Symbols", 0).toInt();
+  if (getDebugLevel() > 1) {
+    qDebug() << "ggv_ovl::read() symbols:" << symbols;
   }
 
+  QString latitude;
+  QString longitude;
+  int group = 0;
   for (int i = 1; i <= symbols; ++i) {
 
     QString symbol = QString("Symbol %1").arg(i);
+    OVL_SYMBOL_TYP type = static_cast<OVL_SYMBOL_TYP>(inifile.value(symbol + "/Typ", 0).toInt());
+    int points = inifile.value(symbol + "/Punkte", -1).toInt();
 
-    OVL_SYMBOL_TYP type = (OVL_SYMBOL_TYP) inifile->value(symbol + "/Typ", 0).toInt();
-    int points = inifile->value(symbol + "/Punkte", -1).toInt();
-
-    if (get_debug_level() > 1) {
-      qDebug() << MYNAME << "read() points:" << points;
+    if (getDebugLevel() > 1) {
+      qDebug() << "ggv_ovl::read() points:" << points;
     }
-    QString lat;
-    QString lon;
+
     switch (type) {
-
-      Waypoint* wpt;
-      int group;
-
     case OVL_SYMBOL_LINE:
-    case OVL_SYMBOL_POLYGON:
-
-      group = inifile->value(symbol + "/Group", -1).toInt();
-
+    case OVL_SYMBOL_POLYGON: {
+      group = inifile.value(symbol + "/Group", -1).toInt();
       if (points > 0) {
-        Route* trk;
-
-        auto* rte = trk = new Route;
-        if (group > 1) {
-          route_add_head(rte);
-          route_ct++;
-          rte->route_name = QString("Route %1").arg(route_ct);
-        } else {
-          track_add_head(trk);
-          track_ct++;
-          trk->route_name = QString("Track %1").arg(track_ct);
-        }
-
+        auto waypoint_list = std::make_unique<WaypointList>();
         for (int j = 0; j < points; ++j) {
-
-          wpt = new Waypoint;
-
-          lat = inifile->value(symbol + "/YKoord" + QString::number(j), "").toString();
-          if (lat.isNull()) {
-            delete wpt;
+          latitude = inifile.value(symbol + "/YKoord" + QString::number(j), "").toString();
+          if (latitude.isNull()) {
             continue;
           }
-          wpt->latitude = lat.toDouble();
-
-          lon = inifile->value(symbol + "/XKoord" + QString::number(j), "").toString();
-          if (lon.isNull()) {
-            delete wpt;
+          longitude = inifile.value(symbol + "/XKoord" + QString::number(j), "").toString();
+          if (longitude.isNull()) {
             continue;
           }
-          wpt->longitude = lon.toDouble();
-
+          auto waypoint = std::make_unique<Waypoint>();
+          waypoint->latitude = latitude.toDouble();
+          waypoint->longitude = longitude.toDouble();
           if (group > 1) {
-            route_points++;
-            wpt->description = QString("RPT") + QString::number(route_points).rightJustified(3, '0');
-            route_add_wpt(rte, wpt);
-          } else {
-            track_add_wpt(trk, wpt);
+            waypoint_count++;
+            waypoint->name = QString("RPT") + QString::number(waypoint_count).rightJustified(3, '0');
           }
+          waypoint_list->addWaypoint(waypoint);
+        }
+        if (group > 1) {
+          waypoint_list->name = QString("Route %1").arg(++route_count);
+          geodata->addRoute(waypoint_list);
+        } else {
+          waypoint_list->name = QString("Track %1").arg(++track_count);
+          geodata->addTrack(waypoint_list);
         }
       }
-      break;
+    }
+    break;
 
     case OVL_SYMBOL_CIRCLE:
-    case OVL_SYMBOL_TRIANGLE:
-
-      wpt = new Waypoint;
-      wpt->description = symbol;
-
-      lat = inifile->value(symbol + "/YKoord", "").toString();
-      if (lat.isNull()) {
-        delete wpt;
+    case OVL_SYMBOL_TRIANGLE: {
+      latitude = inifile.value(symbol + "/YKoord", "").toString();
+      if (latitude.isNull()) {
         continue;
       }
-      wpt->latitude = lat.toDouble();
-      lon = inifile->value(symbol + "/XKoord", "").toString();
-      if (lon.isNull()) {
-        delete wpt;
+      longitude = inifile.value(symbol + "/XKoord", "").toString();
+      if (longitude.isNull()) {
         continue;
       }
-      wpt->longitude = lon.toDouble();
-
-      waypt_add(wpt);
-      break;
+      auto waypoint = std::make_unique<Waypoint>();
+      waypoint->latitude = latitude.toDouble();
+      waypoint->longitude = longitude.toDouble();
+      waypoint->name = symbol;
+      geodata->addWaypoint(waypoint);
+    }
+    break;
 
     case OVL_SYMBOL_BITMAP:
     case OVL_SYMBOL_TEXT:
@@ -173,3 +148,8 @@ GgvOvlFormat::read()
     }
   }
 }
+
+const QString GgvOvlFormat::getName()
+{
+  return "ggv_ovl";
+};

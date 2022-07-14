@@ -24,76 +24,108 @@
 #include <QByteArray>
 #include <QDataStream>
 #include <QDebug>
-#include <QFile>
-#include <QScopedPointer>
-#include <QtEndian>
+#include <QIODevice>
 
-#include "defs.h"
+#include <memory>
+
 #include "ggv_bin.h"
-
-#define MYNAME "ggv_bin"
 
 /***************************************************************************
  *           local helper functions                                        *
  ***************************************************************************/
 
+int
+static ggv_bin_debug_level(const int* update = nullptr)
+{
+  static int debug_level = 0;
+  if (update) {
+    debug_level = *update;
+  }
+  return debug_level;
+}
+
 void
-GgvBinFormat::ggv_bin_read_bytes(QDataStream& stream, QByteArray& buf, int len, const char* descr)
+ggv_bin_read_bytes(QDataStream& stream, QByteArray& buf, int len, const char* descr)
 {
   if (len < 0) {
-    fatal(MYNAME ": Read error, negative len (%s)\n", descr ? descr : "");
+    qCritical().noquote()
+        << QString("bin: Read error, negative len (%1)")
+        .arg(descr ? descr : "");
+    exit(1);
   }
   buf.resize(len);
   if (stream.readRawData(buf.data(), len) != len || stream.status() != QDataStream::Ok) {
-    fatal(MYNAME ": Read error (%s)\n", descr ? descr : "");
+    qCritical().noquote()
+        << QString("bin: Read error (%1)")
+        .arg(descr ? descr : "");
+    exit(1);
   }
 }
 
 quint16
-GgvBinFormat::ggv_bin_read16(QDataStream& stream, const char* descr)
+ggv_bin_read16(QDataStream& stream, const char* descr)
 {
-  quint16 res;
+  quint16 res = 0;
   stream >> res;
   if (stream.status() != QDataStream::Ok) {
-    fatal(MYNAME ": Read error (%s)\n", descr ? descr : "");
+    qCritical().noquote()
+        << QString("bin: Read error (%1)")
+        .arg(descr ? descr : "");
+    exit(1);
   }
-  if (get_debug_level() > 1) {
-    qDebug("ovl: %-15s %5u (0x%04x)", descr, res, res);
+  if (ggv_bin_debug_level() > 1) {
+    qDebug().noquote()
+        << QString("bin: %1 %2 (0x%3)")
+        .arg(descr, -15)
+        .arg(res, 5)
+        .arg(res, 4, 16, QChar('0'));
   }
   return res;
 }
 
 quint32
-GgvBinFormat::ggv_bin_read32(QDataStream& stream, const char* descr)
+ggv_bin_read32(QDataStream& stream, const char* descr)
 {
-  quint32 res;
+  quint32 res = 0;
   stream >> res;
   if (stream.status() != QDataStream::Ok) {
-    fatal(MYNAME ": Read error (%s)\n", descr ? descr : "");
+    qCritical().noquote()
+        << QString("bin: Read error (%1)")
+        .arg(descr ? descr : "");
+    exit(1);
   }
-  if (get_debug_level() > 1) {
+  if (ggv_bin_debug_level() > 1) {
     if ((res & 0xFFFF0000) == 0) {
-      qDebug("ovl: %-15s %5u (0x%08x)", descr, res, res);
+      qDebug().noquote()
+          << QString("bin: %1 %2 (0x%3)")
+          .arg(descr, -15)
+          .arg(res, 5)
+          .arg(res, 8, 16, QChar('0'));
     } else {
-      qDebug("ovl: %-15s       (0x%08x)", descr, res);
+      qDebug().noquote()
+          << QString("bin: %1       (0x%2)")
+          .arg(descr, -15)
+          .arg(res, 8, 16, QChar('0'));
     }
   }
   return res;
 }
 
 void
-GgvBinFormat::ggv_bin_read_text16(QDataStream& stream, QByteArray& buf, const char* descr)
+ggv_bin_read_text16(QDataStream& stream, QByteArray& buf, const char* descr)
 {
   quint16 len = ggv_bin_read16(stream, descr);
   ggv_bin_read_bytes(stream, buf, len, descr);
   buf.append('\0');
-  if (get_debug_level() > 1) {
-    qDebug() << "ovl: text =" << QString::fromLatin1(buf.constData()).simplified();
+  if (ggv_bin_debug_level() > 1) {
+    qDebug().noquote()
+        << "bin: text ="
+        << QString::fromLatin1(buf.constData()).simplified();
   }
 }
 
 void
-GgvBinFormat::ggv_bin_read_text32(QDataStream& stream, QByteArray& buf, const char* descr)
+ggv_bin_read_text32(QDataStream& stream, QByteArray& buf, const char* descr)
 {
   quint32 len = ggv_bin_read32(stream, descr);
   // The following check prevents passing an unsigned int with a
@@ -101,22 +133,29 @@ GgvBinFormat::ggv_bin_read_text32(QDataStream& stream, QByteArray& buf, const ch
   // ggv_bin_read_bytes later on. If this happens, the file is
   // almost certainly corrupted.
   if (len > INT32_MAX) {
-    fatal(MYNAME ": Read error, max len exceeded (%s)\n", descr ? descr : "");
+    qCritical().noquote()
+        << QString("bin: Read error, max len exceeded (%1)")
+        .arg(descr ? descr : "");
+    exit(1);
   }
-  ggv_bin_read_bytes(stream, buf, len, descr);
+  ggv_bin_read_bytes(stream, buf, static_cast<int>(len), descr);
   buf.append('\0');
-  if (get_debug_level() > 1) {
-    qDebug() << "ovl: text =" << QString::fromLatin1(buf.constData()).simplified();
+  if (ggv_bin_debug_level() > 1) {
+    qDebug().noquote()
+        << "bin: text ="
+        << QString::fromLatin1(buf.constData()).simplified();
   }
 }
 
 double
-GgvBinFormat::ggv_bin_read_double(QDataStream& stream, const char* descr)
+ggv_bin_read_double(QDataStream& stream, const char* descr)
 {
-  double res;
+  double res = 0.0;
   stream >> res;
   if (stream.status() != QDataStream::Ok) {
-    fatal(MYNAME ": Read error (%s)\n", descr ? descr : "");
+    qCritical().noquote()
+        << QString("bin: Read error (%1)")
+        .arg(descr ? descr : "");
   }
   return res;
 }
@@ -126,15 +165,12 @@ GgvBinFormat::ggv_bin_read_double(QDataStream& stream, const char* descr)
  ***************************************************************************/
 
 void
-GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
+ggv_bin_read_v2(QDataStream& stream, Geodata* geodata)
 {
   QByteArray buf;
   QString track_name;
   QString waypt_name;
-  Route* ggv_bin_track;
-  Waypoint* wpt;
-  double lon, lat;
-  quint16 line_points;
+  quint16 line_points = 0;
 
   // header length is usually either 0x90 or 0x00
   quint16 header_len = ggv_bin_read16(stream, "map name len");
@@ -142,16 +178,18 @@ GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
     ggv_bin_read_bytes(stream, buf, header_len, "map name");
     buf.remove(0,4);
     buf.append('\0');
-    if (get_debug_level() > 1) {
-      qDebug() << "ovl: name =" << buf.constData();
+    if (ggv_bin_debug_level() > 1) {
+      qDebug().noquote() << "bin: name =" << buf.constData();
     }
   }
 
   while (!stream.atEnd()) {
     track_name.clear();
 
-    if (get_debug_level() > 1) {
-      qDebug("------------------------------------ 0x%llx", stream.device()->pos());
+    if (ggv_bin_debug_level() > 1) {
+      qDebug().noquote()
+          << QString("------------------------------------ 0x%%1")
+          .arg(stream.device()->pos(), 0, 16);
     }
 
     auto entry_pos = stream.device()->pos();
@@ -165,47 +203,45 @@ GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
       track_name = QString::fromLatin1(buf.constData()).simplified();
     }
 
+
     switch (entry_type) {
-    case 0x02:
+    case 0x02: {
       // text
+      auto wpt = std::make_unique<Waypoint>();
       ggv_bin_read16(stream, "text color");
       ggv_bin_read16(stream, "text size");
       ggv_bin_read16(stream, "text trans");
       ggv_bin_read16(stream, "text font");
       ggv_bin_read16(stream, "text angle");
-      lon = ggv_bin_read_double(stream, "text lon");
-      lat = ggv_bin_read_double(stream, "text lat");
+      wpt->longitude = ggv_bin_read_double(stream, "text lon");
+      wpt->latitude = ggv_bin_read_double(stream, "text lat");
       ggv_bin_read_text16(stream, buf, "text label");
-      waypt_name = QString::fromLatin1(buf.constData()).simplified();
-      wpt = new Waypoint;
-      wpt->longitude = lon;
-      wpt->latitude = lat;
-      wpt->description = waypt_name;
-      waypt_add(wpt);
-      break;
+      wpt->name = QString::fromLatin1(buf.constData()).simplified();
+      geodata->addWaypoint(wpt);
+    }
+    break;
     case 0x03:
     // line
-    case 0x04:
+    case 0x04: {
       // area
+      auto ggv_bin_track = std::make_unique<WaypointList>();
       ggv_bin_read16(stream, "line color");
       ggv_bin_read16(stream, "line width");
       ggv_bin_read16(stream, "line type");
       line_points = ggv_bin_read16(stream, "line points");
-      ggv_bin_track = new Route;
-      track_add_head(ggv_bin_track);
       if (! track_name.isEmpty()) {
-        ggv_bin_track->route_name = track_name;
+        ggv_bin_track->name = track_name;
       }
 
       for (int i = 1; i <= line_points; i++) {
-        lon = ggv_bin_read_double(stream, "line lon");
-        lat = ggv_bin_read_double(stream, "line lat");
-        wpt = new Waypoint;
-        wpt->longitude = lon;
-        wpt->latitude = lat;
-        track_add_wpt(ggv_bin_track, wpt);
+        auto wpt = std::make_unique<Waypoint>();
+        wpt->longitude = ggv_bin_read_double(stream, "line lon");
+        wpt->latitude = ggv_bin_read_double(stream, "line lat");
+        ggv_bin_track->addWaypoint(wpt);
       }
-      break;
+      geodata->addTrack(ggv_bin_track);
+    }
+    break;
     case 0x05:
     // rectangle
     case 0x06:
@@ -231,7 +267,11 @@ GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
       ggv_bin_read_text32(stream, buf, "bmp data");
       break;
     default:
-      fatal(MYNAME ": Unknown entry type (0x%hx, pos=0x%llx) \n", entry_type, entry_pos);
+      qCritical().noquote()
+          << QString("bin: Unknown entry type (0x%1, pos=0x%2)")
+          .arg(entry_type, 0, 16)
+          .arg(entry_pos, 0, 16);
+      exit(1);
     }
   }
 }
@@ -241,7 +281,7 @@ GgvBinFormat::ggv_bin_read_v2(QDataStream& stream)
  ***************************************************************************/
 
 void
-GgvBinFormat::ggv_bin_read_v34_header(QDataStream& stream, quint32& number_labels, quint32& number_records)
+ggv_bin_read_v34_header(QDataStream& stream, quint32& number_labels, quint32& number_records)
 {
   QByteArray buf;
 
@@ -260,19 +300,21 @@ GgvBinFormat::ggv_bin_read_v34_header(QDataStream& stream, quint32& number_label
     ggv_bin_read_bytes(stream, buf, header_len, "map name");
     buf.remove(0,4);
     buf.append('\0');
-    if (get_debug_level() > 1) {
-      qDebug() << "ovl: name =" << buf.constData();
+    if (ggv_bin_debug_level() > 1) {
+      qDebug().noquote() << "bin: name =" << buf.constData();
     }
   }
 }
 
 void
-GgvBinFormat::ggv_bin_read_v34_label(QDataStream& stream)
+ggv_bin_read_v34_label(QDataStream& stream)
 {
   QByteArray buf;
 
-  if (get_debug_level() > 1) {
-    qDebug("------------------------------------ 0x%llx", stream.device()->pos());
+  if (ggv_bin_debug_level() > 1) {
+    qDebug().noquote()
+        << QString("------------------------------------ 0x%1")
+        .arg(stream.device()->pos(), 0, 16);
   }
   ggv_bin_read_bytes(stream, buf, 0x08, "label header");
   ggv_bin_read_bytes(stream, buf, 0x14, "label number");
@@ -282,7 +324,7 @@ GgvBinFormat::ggv_bin_read_v34_label(QDataStream& stream)
 }
 
 QString
-GgvBinFormat::ggv_bin_read_v34_common(QDataStream& stream)
+ggv_bin_read_v34_common(QDataStream& stream)
 {
   QByteArray buf;
 
@@ -310,25 +352,25 @@ GgvBinFormat::ggv_bin_read_v34_common(QDataStream& stream)
 }
 
 void
-GgvBinFormat::ggv_bin_read_v34_record(QDataStream& stream)
+ggv_bin_read_v34_record(QDataStream& stream, Geodata* geodata)
 {
   QByteArray buf;
-  Waypoint* wpt;
-  Route* ggv_bin_track;
-  quint32 bmp_len;
-  quint16 line_points;
-  double lon, lat;
+  quint32 bmp_len = 0;
+  quint16 line_points = 0;
 
-  if (get_debug_level() > 1) {
-    qDebug("------------------------------------ 0x%llx", stream.device()->pos());
+  if (ggv_bin_debug_level() > 1) {
+    qDebug().noquote()
+        << QString("------------------------------------ 0x%1")
+        .arg(stream.device()->pos(), 0, 16);
   }
 
   quint16 entry_type = ggv_bin_read16(stream, "entry type");
   QString label = ggv_bin_read_v34_common(stream);
 
   switch (entry_type) {
-  case 0x02:
+  case 0x02: {
     // text
+    auto wpt = std::make_unique<Waypoint>();
     ggv_bin_read16(stream, "text prop1");
     ggv_bin_read32(stream, "text prop2");
     ggv_bin_read16(stream, "text prop3");
@@ -337,26 +379,24 @@ GgvBinFormat::ggv_bin_read_v34_record(QDataStream& stream)
     ggv_bin_read16(stream, "text angle");
     ggv_bin_read16(stream, "text size");
     ggv_bin_read16(stream, "text area");
-    lon = ggv_bin_read_double(stream, "text lon");
-    lat = ggv_bin_read_double(stream, "text lat");
+    wpt->longitude = ggv_bin_read_double(stream, "text lon");
+    wpt->latitude = ggv_bin_read_double(stream, "text lat");
     ggv_bin_read_double(stream, "text unk");
     ggv_bin_read_text16(stream, buf, "text label");
-    wpt = new Waypoint;
-    wpt->longitude = lon;
-    wpt->latitude = lat;
-    wpt->description = QString::fromLatin1(buf.constData()).simplified();
-    waypt_add(wpt);
-    break;
+    wpt->name = QString::fromLatin1(buf.constData()).simplified();
+    geodata->addWaypoint(wpt);
+  }
+  break;
+
   case 0x03:
   case 0x04:
   // area
-  case 0x17:
+  case 0x17: {
     // line
-    ggv_bin_track = new Route;
-    track_add_head(ggv_bin_track);
+    auto ggv_bin_track = std::make_unique<WaypointList>();
 
     if (! label.isEmpty()) {
-      ggv_bin_track->route_name = label;
+      ggv_bin_track->name = label;
     }
 
     ggv_bin_read16(stream, "line prop1");
@@ -372,15 +412,17 @@ GgvBinFormat::ggv_bin_read_v34_record(QDataStream& stream)
     }
 
     for (int i=1; i <= line_points; i++) {
-      lon = ggv_bin_read_double(stream, "line lon");
-      lat = ggv_bin_read_double(stream, "line lat");
+      auto wpt = std::make_unique<Waypoint>();
+      wpt->longitude = ggv_bin_read_double(stream, "line lon");
+      wpt->latitude = ggv_bin_read_double(stream, "line lat");
       ggv_bin_read_double(stream, "line unk");
-      wpt = new Waypoint;
-      wpt->longitude = lon;
-      wpt->latitude = lat;
-      track_add_wpt(ggv_bin_track, wpt);
+      ggv_bin_track->addWaypoint(wpt);
     }
-    break;
+
+    geodata->addTrack(ggv_bin_track);
+  }
+  break;
+
   case 0x05:
   case 0x06:
   case 0x07:
@@ -416,29 +458,36 @@ GgvBinFormat::ggv_bin_read_v34_record(QDataStream& stream)
     // ggv_bin_read_bytes later on. If this happens, the file is
     // almost certainly corrupted.
     if (bmp_len > INT32_MAX) {
-      fatal(MYNAME ": Read error, max bmp_len exceeded\n");
+      qCritical().noquote()
+          << QString("bin: Read error, max bmp_len exceeded");
+      exit(1);
     }
     ggv_bin_read16(stream, "bmp prop");
-    ggv_bin_read_bytes(stream, buf, bmp_len, "bmp data");
+    ggv_bin_read_bytes(stream, buf, static_cast<int>(bmp_len), "bmp data");
     break;
   default:
-    fatal(MYNAME ": Unsupported type: %x\n", entry_type);
+    qCritical().noquote()
+        << QString("bin: Unsupported type: %1")
+        .arg(entry_type, 0, 16);
+    exit(1);
   }
 }
 
 void
-GgvBinFormat::ggv_bin_read_v34(QDataStream& stream)
+ggv_bin_read_v34(QDataStream& stream, Geodata* geodata)
 {
   QByteArray buf;
-  quint32 label_count;
-  quint32 record_count;
+  quint32 label_count = 0;
+  quint32 record_count = 0;
 
   while (!stream.atEnd()) {
     ggv_bin_read_v34_header(stream, label_count, record_count);
 
     if (label_count && !stream.atEnd()) {
-      if (get_debug_level() > 1) {
-        qDebug("-----labels------------------------- 0x%llx", stream.device()->pos());
+      if (ggv_bin_debug_level() > 1) {
+        qDebug().noquote()
+            << QString("-----labels------------------------- 0x%1x")
+            .arg(stream.device()->pos(), 0, 16);
       }
       for (unsigned int i = 0; i < label_count; i++) {
         ggv_bin_read_v34_label(stream);
@@ -446,91 +495,106 @@ GgvBinFormat::ggv_bin_read_v34(QDataStream& stream)
     }
 
     if (record_count && !stream.atEnd()) {
-      if (get_debug_level() > 1) {
-        qDebug("-----records------------------------ 0x%llx", stream.device()->pos());
+      if (ggv_bin_debug_level() > 1) {
+        qDebug().noquote()
+            << QString("-----records------------------------ 0x%1")
+            .arg(stream.device()->pos(), 0, 16);
       }
       for (unsigned int i = 0; i < record_count; i++) {
-        ggv_bin_read_v34_record(stream);
+        ggv_bin_read_v34_record(stream, geodata);
       }
     }
 
     if (!stream.atEnd()) {
-      if (get_debug_level() > 1) {
-        qDebug("------------------------------------ 0x%llx", stream.device()->pos());
+      if (ggv_bin_debug_level() > 1) {
+        qDebug().noquote()
+            << QString("------------------------------------ 0x%1")
+            .arg(stream.device()->pos(), 0, 16);
       }
       // we just skip over the next magic bytes without checking they
       // contain the correct string. This is consistent with what I
       // believe GGV does
       ggv_bin_read_bytes(stream, buf, 23, "magicbytes");
-      if (get_debug_level() > 1) {
-        qDebug() << "ovl: header = " << buf.constData();
+      if (ggv_bin_debug_level() > 1) {
+        qDebug().noquote() << "bin: header = " << buf.constData();
       }
     }
   }
 
-  if (get_debug_level() > 1) {
-    qDebug("fpos: 0x%llx", stream.device()->pos());
-    qDebug("size: 0x%llx", stream.device()->size());
+  if (ggv_bin_debug_level() > 1) {
+    qDebug().noquote()
+        << QString("fpos: 0x%1")
+        .arg(stream.device()->pos(), 0, 16);
+    qDebug().noquote()
+        << QString("size: 0x%1")
+        .arg(stream.device()->size(), 0, 16);
   }
 }
 
 /***************************************************************************
- *              entry points called by gpsbabel main process               *
+ *              entry points called by ggvtogpx main process               *
  ***************************************************************************/
 
-void
-GgvBinFormat::read()
+bool
+GgvBinFormat::probe(QIODevice* io)
 {
-  if (read_fname.isEmpty()) {
-    fatal(MYNAME ": no input file given\n");
-  }
+  int debug_level = getDebugLevel();
+  ggv_bin_debug_level(&debug_level);
 
-  QScopedPointer<QFile> file;
-  if (read_fname == "-") {
-    file.reset(new QFile());
-    if (!file->open(stdin, QIODevice::ReadOnly)) {
-      fatal(MYNAME ": Error opening file %s\n", qPrintable(read_fname));
-    }
-  } else {
-    file.reset(new QFile(read_fname));
-    if (!file->open(QIODevice::ReadOnly)) {
-      fatal(MYNAME ": Error opening file %s\n", qPrintable(read_fname));
-    }
-  }
-
-  QDataStream stream(file.get());
+  io->reset();
+  QDataStream stream(io);
   stream.setFloatingPointPrecision(QDataStream::DoublePrecision);
   stream.setByteOrder(QDataStream::LittleEndian);
 
   QByteArray buf;
   ggv_bin_read_bytes(stream, buf, 0x17, "magic");
   buf.append('\0');
-  if (get_debug_level() > 1) {
-    qDebug() << "ovl: header =" << buf.constData();
+  if (ggv_bin_debug_level() > 1) {
+    qDebug().noquote() << "bin: header =" << buf.constData();
   }
 
   if (buf.startsWith("DOMGVCRD Ovlfile V2.0")) {
-    ggv_bin_read_v2(stream);
+    return true;
   } else if (buf.startsWith("DOMGVCRD Ovlfile V3.0")) {
-    ggv_bin_read_v34(stream);
+    return true;
   } else if (buf.startsWith("DOMGVCRD Ovlfile V4.0")) {
-    ggv_bin_read_v34(stream);
+    return true;
   } else {
-    fatal(MYNAME ": Unsupported file format\n");
+    return false;
+  }
+}
+
+void
+GgvBinFormat::read(QIODevice* io, Geodata* geodata)
+{
+  int debug_level = getDebugLevel();
+  ggv_bin_debug_level(&debug_level);
+
+  io->reset();
+  QDataStream stream(io);
+  stream.setFloatingPointPrecision(QDataStream::DoublePrecision);
+  stream.setByteOrder(QDataStream::LittleEndian);
+
+  QByteArray buf;
+  ggv_bin_read_bytes(stream, buf, 0x17, "magic");
+  buf.append('\0');
+  if (ggv_bin_debug_level() > 1) {
+    qDebug().noquote() << "bin: header =" << buf.constData();
   }
 
-  file->close();
+  if (buf.startsWith("DOMGVCRD Ovlfile V2.0")) {
+    ggv_bin_read_v2(stream, geodata);
+  } else if (buf.startsWith("DOMGVCRD Ovlfile V3.0")) {
+    ggv_bin_read_v34(stream, geodata);
+  } else if (buf.startsWith("DOMGVCRD Ovlfile V4.0")) {
+    ggv_bin_read_v34(stream, geodata);
+  } else {
+    qCritical().noquote() << QString("bin: Unsupported file format");
+    exit(1);
+  }
 }
 
-void
-GgvBinFormat::rd_init(const QString& fname)
+const QString GgvBinFormat::getName()
 {
-  read_fname = fname;
-}
-
-void
-GgvBinFormat::rd_deinit()
-{
-  read_fname.clear();
-}
-
+  return "ggv_bin";
+};
