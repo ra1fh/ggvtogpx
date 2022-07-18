@@ -96,11 +96,11 @@ GgvOvlFormat::read(QIODevice* io, Geodata* geodata)
         auto waypoint_list = std::make_unique<WaypointList>();
         for (int j = 0; j < points; ++j) {
           latitude = inifile.value(symbol + "/YKoord" + QString::number(j), "").toString();
-          if (latitude.isNull()) {
+          if (latitude.isEmpty()) {
             continue;
           }
           longitude = inifile.value(symbol + "/XKoord" + QString::number(j), "").toString();
-          if (longitude.isNull()) {
+          if (longitude.isEmpty()) {
             continue;
           }
           auto waypoint = std::make_unique<Waypoint>();
@@ -112,38 +112,47 @@ GgvOvlFormat::read(QIODevice* io, Geodata* geodata)
           }
           waypoint_list->addWaypoint(waypoint);
         }
+        waypoint_list->name = inifile.value(symbol + "/Text", "").toString();
+        if (waypoint_list->name.isEmpty()) {
+          if (group > 1) {
+            waypoint_list->name = QString("Route %1").arg(++route_count);
+          } else {
+            waypoint_list->name = QString("Track %1").arg(++track_count);
+          }
+        }
         if (group > 1) {
-          waypoint_list->name = QString("Route %1").arg(++route_count);
           geodata->addRoute(waypoint_list);
         } else {
-          waypoint_list->name = QString("Track %1").arg(++track_count);
           geodata->addTrack(waypoint_list);
         }
       }
     }
     break;
 
+    case OVL_SYMBOL_TEXT:
+    case OVL_SYMBOL_RECTANGLE:
     case OVL_SYMBOL_CIRCLE:
     case OVL_SYMBOL_TRIANGLE: {
       latitude = inifile.value(symbol + "/YKoord", "").toString();
-      if (latitude.isNull()) {
+      if (latitude.isEmpty()) {
         continue;
       }
       longitude = inifile.value(symbol + "/XKoord", "").toString();
-      if (longitude.isNull()) {
+      if (longitude.isEmpty()) {
         continue;
       }
       auto waypoint = std::make_unique<Waypoint>();
       waypoint->latitude = latitude.toDouble();
       waypoint->longitude = longitude.toDouble();
-      waypoint->name = symbol;
+      waypoint->name = inifile.value(symbol + "/Text", "").toString();
+      if (waypoint->name.isEmpty()) {
+        waypoint->name = symbol;
+      }
       geodata->addWaypoint(waypoint);
     }
     break;
 
     case OVL_SYMBOL_BITMAP:
-    case OVL_SYMBOL_TEXT:
-    case OVL_SYMBOL_RECTANGLE:
       break;
     }
   }
