@@ -32,7 +32,7 @@ class GgvOvlFormat : public Format
 {
 public:
   GgvOvlFormat() {};
-  bool probe([[maybe_unused]] QIODevice* io) override;
+  bool probe(QIODevice* io) override;
   void read(QIODevice* io, Geodata* geodata) override;
   const QString getName() override;
 };

@@ -21,6 +21,7 @@
 
  */
 
+#include <QByteArray>
 #include <QDebug>
 #include <QSettings>
 #include <QString>
@@ -48,15 +49,28 @@ enum OVL_SYMBOL_TYP {
  */
 
 bool
-GgvOvlFormat::probe([[maybe_unused]] QIODevice* io)
+GgvOvlFormat::probe(QIODevice* io)
 {
-  // not implemented yet
+  QByteArray buf;
+
+  std::list<QByteArray> magic;
+  magic.push_back(QByteArray("[Symbol"));
+  magic.push_back(QByteArray("[Overlay]"));
+
+  io->reset();
+  for (auto&& m : std::as_const(magic)) {
+    buf = io->peek(m.size());
+    if (buf.startsWith(m)) {
+      return true;
+    }
+  }
   return false;
 }
 
 void
 GgvOvlFormat::read(QIODevice* io, Geodata* geodata)
 {
+  io->reset();
   // QSettings does not handle QIODevice. Therefore we write
   // the data to a tempfile here to be able to keep the nice
   // generic interface with QIODevice

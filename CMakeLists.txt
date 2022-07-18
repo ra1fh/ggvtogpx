@@ -74,7 +74,7 @@ foreach (test ${BinTestsToRun})
   set_tests_properties(${test}-generate PROPERTIES ENVIRONMENT "GGVTOGPX_TESTMODE=1")
 endforeach ()
 
-set (OvlTestsToRun ggv_ovl-sample)
+set (OvlTestsToRun ggv_ovl-sample-1 ggv_ovl-sample-2)
 
 # Add all the ADD_TEST for each test
 foreach (test ${OvlTestsToRun})

@@ -331,10 +331,14 @@ or record sections.
 History
 -------
 
-I wrote the initial OVL file format converter code
+I wrote the initial OVL binary file format converter code
 in 2016. The code was imported into
 `GPSBabel <https://www.gpsbabel.org>`_ in January 2016 as ``ggv_bin``
 format. In 2022, GPSBabel retired a lot of little used formats,
 including the ``ggv_bin`` format. This repository contains the retired
 code almost unmodified with as little as possible support code to do
 OVL to GPX conversion only (no filtering, no other formats supported).
+
+The OVL ASCII (``ggv_ovl``) format was retired in 2022 in GPSBabel as
+well. The code imported into ggvtogpx is based on the GPSBabel
+code.
