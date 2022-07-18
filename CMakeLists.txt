@@ -65,20 +65,16 @@ install(TARGETS ggvtogpx)
 add_custom_target(style
   astyle --options=astylerc *.h *.cc)
 
-set (BinTestsToRun ggv_bin-sample-v2 ggv_bin-sample-v3 ggv_bin-sample-v4)
+set (BinTestsToRun
+  ggv_bin-sample-v2
+  ggv_bin-sample-v3
+  ggv_bin-sample-v4
+  ggv_ovl-sample-1
+  ggv_ovl-sample-2)
 
 # Add all the ADD_TEST for each test
 foreach (test ${BinTestsToRun})
-  add_test (NAME ${test}-generate COMMAND ggvtogpx -i ggv_bin testdata/${test}.ovl testdata/${test}.out)
-  add_test (NAME ${test}-diff COMMAND ${CMAKE_COMMAND} -E compare_files testdata/${test}.gpx testdata/${test}.out)
-  set_tests_properties(${test}-generate PROPERTIES ENVIRONMENT "GGVTOGPX_TESTMODE=1")
-endforeach ()
-
-set (OvlTestsToRun ggv_ovl-sample-1 ggv_ovl-sample-2)
-
-# Add all the ADD_TEST for each test
-foreach (test ${OvlTestsToRun})
-  add_test (NAME ${test}-generate COMMAND ggvtogpx -i ggv_ovl testdata/${test}.ovl testdata/${test}.out)
+  add_test (NAME ${test}-generate COMMAND ggvtogpx testdata/${test}.ovl testdata/${test}.out)
   add_test (NAME ${test}-diff COMMAND ${CMAKE_COMMAND} -E compare_files testdata/${test}.gpx testdata/${test}.out)
   set_tests_properties(${test}-generate PROPERTIES ENVIRONMENT "GGVTOGPX_TESTMODE=1")
 endforeach ()
