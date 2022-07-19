@@ -47,6 +47,7 @@ endif()
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Xml)
 
 find_library(
     LIBZIP_LIBRARY
@@ -76,6 +77,8 @@ target_link_libraries(ggvtogpx PRIVATE
   ${LIBZIP_LIBRARIES}
   Qt${QT_VERSION_MAJOR}::Core)
 
+target_link_libraries(ggvtogpx PRIVATE Qt${QT_VERSION_MAJOR}::Xml)
+
 install(TARGETS ggvtogpx)
 
 add_custom_target(style
@@ -87,7 +90,8 @@ set (BinTestsToRun
   ggv_bin-sample-v4
   ggv_ovl-sample-1
   ggv_ovl-sample-2
-  ggv_xml-sample-1)
+  ggv_xml-sample-1
+  ggv_xml-sample-2)
 
 # Add all the ADD_TEST for each test
 foreach (test ${BinTestsToRun})
