@@ -161,11 +161,11 @@ ggv_xml_parse_objectlist(QXmlStreamReader& xml, Geodata* geodata)
     }
 
     if (xml.name() == QLatin1String("object")) {
-      QStringView uid = xml.attributes().value(QLatin1String("uid"));
+      QStringView clsname = xml.attributes().value(QLatin1String("clsName"));
       if (ggv_xml_debug_level() > 1) {
-        qDebug() << "xml: parse_objectlist uid:  " << uid;
+        qDebug() << "xml: parse_objectlist clsname:  " << clsname;
       }
-      if (uid == QLatin1String("2")) {
+      if (clsname == QLatin1String("CLSID_GraphicLine")) {
         ggv_xml_parse_object(xml, geodata);
       }
     }
