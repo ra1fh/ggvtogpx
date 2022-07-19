@@ -30,6 +30,7 @@
 #include "geodata.h"
 #include "ggv_bin.h"
 #include "ggv_ovl.h"
+#include "ggv_xml.h"
 #include "gpx.h"
 
 static void process_files(const QString& formatName, const QString& infileName, const QString& outfileName, const QString& creator, bool testmode, int debug_level)
@@ -61,6 +62,7 @@ static void process_files(const QString& formatName, const QString& infileName, 
   std::list<std::unique_ptr<Format>> formats;
   formats.push_back(std::make_unique<GgvBinFormat>());
   formats.push_back(std::make_unique<GgvOvlFormat>());
+  formats.push_back(std::make_unique<GgvXmlFormat>());
 
   // Determine which input format to use (either auto-probe or by
   // command line switch)

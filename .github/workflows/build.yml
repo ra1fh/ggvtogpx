@@ -16,8 +16,7 @@ jobs:
 
       - name: Install Qt5
         run: |
-          sudo apt-get -y install  qtbase5-dev qtbase5-dev-tools
-          #sudo apt-get -y install qt6-base-dev qt6-base-dev-tools
+          sudo apt-get -y install  qtbase5-dev qtbase5-dev-tools libzip-dev
 
       - name: CMake
         env:

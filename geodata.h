@@ -25,17 +25,19 @@
 
 #include <QString>
 
+#include <cmath>
 #include <list>
 #include <memory>
 
 class Waypoint
 {
 public:
-  Waypoint() : latitude(0.0), longitude(0.0) {};
-  Waypoint(double lat, double lon) : latitude(lat), longitude(lon) {};
-  Waypoint(double lat, double lon, QString& n) : latitude(lat), longitude(lon), name(n) {}
+  Waypoint() : latitude(NAN), longitude(NAN), elevation(NAN) {};
+  Waypoint(double lat, double lon) : latitude(lat), longitude(lon),elevation(NAN) {};
+  Waypoint(double lat, double lon, QString& n) : latitude(lat), longitude(lon), elevation(NAN), name(n) {}
   double latitude;
   double longitude;
+  double elevation;
   QString name;
 };
 

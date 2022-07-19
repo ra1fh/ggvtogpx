@@ -4,8 +4,7 @@
 ggvtogpx
 ========
 
-``ggvtogpx`` converts Geogrid-Viewer binary and ASCII overlay files
-(OVL) to GPX.
+``ggvtogpx`` converts Geogrid-Viewer overlay files (OVL) to GPX.
 
 Geogrid-Viewer has been part of several `Top50
 <https://de.wikipedia.org/wiki/Top50>`_ topographic map products that
@@ -22,7 +21,7 @@ following example shows the first bytes of a version 3.0 file:
     00000000  44 4f 4d 47 56 43 52 44  20 4f 76 6c 66 69 6c 65  |DOMGVCRD Ovlfile|
     00000010  20 56 33 2e 30 3a 00 00  00 08 00 00 00 1e 00 00  | V3.0:..........|
 
-``ggvtogpx`` also supports ASCII overlay file format which looks like
+``ggvtogpx`` supports ASCII overlay file format which looks like
 this:
 
 ::
@@ -33,7 +32,23 @@ this:
    Col=3
    ...
 
-The XML format (version 5.0) is *not supported* by ``ggvtogpx``.
+``ggvtogpx`` supports ZIP compressed XML overlay files (version
+5.0). The archive content can be listed with unzip to detect the
+verion 5.0 format. Specifically it contains the file geogrid50.xml:
+
+::
+
+   Archive:  ggv_xml-sample-1.ovl
+     Length      Date    Time    Name
+   ---------  ---------- -----   ----
+          16  11-21-2011 07:18   Bindata0.dat
+       37982  11-21-2011 07:18   geogrid50.xml
+   ---------                     -------
+       37998                     2 files
+
+(Note: ``ggvtogpx`` will unpack the OVL 5.0 files, there is no need to
+manually extract the XML).
+
 
 Building and Installing
 -----------------------
@@ -41,6 +56,7 @@ Building and Installing
 Requirements:
 
 * Qt5 or Qt6
+* minizip (Debian/Ubuntu: libminizip-dev)
 * CMake
 * C++17 compiler
 * Tested on Ubuntu 20.04, Ubuntu 22.04, and OpenBSD 7.1
@@ -58,14 +74,14 @@ Installation:
 ::
 
    make install
-   
+
 Usage
 -----
 
 ::
 
     Usage: ggvtogpx [options] infile outfile
-    
+
     Geogrid-Viewer OVL to GPX Converter. The input and output file
     options accept '-' for stdin or stdout. If no output file is
     given, the GPX output code will not run (useful for debugging).
@@ -75,14 +91,24 @@ Usage
   	  --help-all     Displays help including Qt specific options.
   	  -v, --version  Displays version information.
   	  -D <debug>     debug <level>
-  	  -i <type>      input <type> (ggv_bin, ggv_ovl)
+  	  -i <type>      input <type> (ggv_bin, ggv_ovl, ggv_xml)
   	  -f <file>      input <file>
   	  -o <type>      output <type> (ignored)
-  	  -F <file>      output <file>  
-    
+  	  -F <file>      output <file>
+
     Arguments:
       infile         input file (alternative to -f)
       outfile        output file (alternative to -F)
+
+The input type will be automatically detected. There is typically no
+need to use the -i option to overwrite the detection. The output type
+option exists only for limited GPSBabel option compatibility. The
+output type is hard-coded to GPX. Example:
+
+::
+
+    ggvtogpx input.ovl output.gpx
+
 
 
 OVL File Format
@@ -100,7 +126,7 @@ Version 2.0
 .. code:: c
 
     // Geogrid-Viewer OVL binary file format version 2.0
-    
+
     struct FILE {
       struct HEADER {
         char magic[23];    // "DOMGVCRD Ovlfile V2.0:\0"
@@ -148,7 +174,7 @@ Version 2.0
             uint16 type;
             uint16 point_count;
             struct POINT {
-              double lon; 
+              double lon;
               double lat;
             }[point_count];
           }
@@ -197,9 +223,9 @@ or record sections.
     struct FILE {
       // A version 3.0/4.0 file might contain multiple parts all
       // starting with DOMGCRD magic bytes and header
-      struct PART[] { 
+      struct PART[] {
         struct HEADER {
-          char magic[23]; 
+          char magic[23];
           // either "DOMGVCRD Ovlfile V3.0:\0"
           //     or "DOMGVCRD Ovlfile V4.0:\0"
           char padding[8];
@@ -342,3 +368,5 @@ OVL to GPX conversion only (no filtering, no other formats supported).
 The OVL ASCII (``ggv_ovl``) format was retired in 2022 in GPSBabel as
 well. The code imported into ggvtogpx is based on the GPSBabel
 code.
+
+The XML format was written from scratch in 2022.

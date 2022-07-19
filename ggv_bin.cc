@@ -34,8 +34,8 @@
  *           local helper functions                                        *
  ***************************************************************************/
 
-int
-static ggv_bin_debug_level(const int* update = nullptr)
+static int
+ggv_bin_debug_level(const int* update = nullptr)
 {
   static int debug_level = 0;
   if (update) {
@@ -44,7 +44,7 @@ static ggv_bin_debug_level(const int* update = nullptr)
   return debug_level;
 }
 
-void
+static void
 ggv_bin_read_bytes(QDataStream& stream, QByteArray& buf, int len, const char* descr)
 {
   if (len < 0) {
@@ -62,7 +62,7 @@ ggv_bin_read_bytes(QDataStream& stream, QByteArray& buf, int len, const char* de
   }
 }
 
-quint16
+static quint16
 ggv_bin_read16(QDataStream& stream, const char* descr)
 {
   quint16 res = 0;
@@ -83,7 +83,7 @@ ggv_bin_read16(QDataStream& stream, const char* descr)
   return res;
 }
 
-quint32
+static quint32
 ggv_bin_read32(QDataStream& stream, const char* descr)
 {
   quint32 res = 0;
@@ -111,7 +111,7 @@ ggv_bin_read32(QDataStream& stream, const char* descr)
   return res;
 }
 
-void
+static void
 ggv_bin_read_text16(QDataStream& stream, QByteArray& buf, const char* descr)
 {
   quint16 len = ggv_bin_read16(stream, descr);
@@ -124,7 +124,7 @@ ggv_bin_read_text16(QDataStream& stream, QByteArray& buf, const char* descr)
   }
 }
 
-void
+static void
 ggv_bin_read_text32(QDataStream& stream, QByteArray& buf, const char* descr)
 {
   quint32 len = ggv_bin_read32(stream, descr);
@@ -147,7 +147,7 @@ ggv_bin_read_text32(QDataStream& stream, QByteArray& buf, const char* descr)
   }
 }
 
-double
+static double
 ggv_bin_read_double(QDataStream& stream, const char* descr)
 {
   double res = 0.0;
@@ -164,7 +164,7 @@ ggv_bin_read_double(QDataStream& stream, const char* descr)
  *            OVL Version 2.0                                              *
  ***************************************************************************/
 
-void
+static void
 ggv_bin_read_v2(QDataStream& stream, Geodata* geodata)
 {
   QByteArray buf;
@@ -280,7 +280,7 @@ ggv_bin_read_v2(QDataStream& stream, Geodata* geodata)
  *           OVL Version 3.0 and 4.0                                       *
  ***************************************************************************/
 
-void
+static void
 ggv_bin_read_v34_header(QDataStream& stream, quint32& number_labels, quint32& number_records)
 {
   QByteArray buf;
@@ -306,7 +306,7 @@ ggv_bin_read_v34_header(QDataStream& stream, quint32& number_labels, quint32& nu
   }
 }
 
-void
+static void
 ggv_bin_read_v34_label(QDataStream& stream)
 {
   QByteArray buf;
@@ -323,7 +323,7 @@ ggv_bin_read_v34_label(QDataStream& stream)
   ggv_bin_read16(stream, "label flag2");
 }
 
-QString
+static QString
 ggv_bin_read_v34_common(QDataStream& stream)
 {
   QByteArray buf;
@@ -351,7 +351,7 @@ ggv_bin_read_v34_common(QDataStream& stream)
   return res;
 }
 
-void
+static void
 ggv_bin_read_v34_record(QDataStream& stream, Geodata* geodata)
 {
   QByteArray buf;
@@ -473,7 +473,7 @@ ggv_bin_read_v34_record(QDataStream& stream, Geodata* geodata)
   }
 }
 
-void
+static void
 ggv_bin_read_v34(QDataStream& stream, Geodata* geodata)
 {
   QByteArray buf;

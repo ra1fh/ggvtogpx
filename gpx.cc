@@ -23,7 +23,21 @@
 #include <QDateTime>
 #include <QXmlStreamWriter>
 
+#include <cmath>
+
 #include "gpx.h"
+
+static const auto kNumDigits = 9;
+
+static void
+gpx_write_waypoint(QXmlStreamWriter& xml, Waypoint* waypoint)
+{
+  xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', kNumDigits));
+  xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', kNumDigits));
+  if (! std::isnan(waypoint->elevation)) {
+    xml.writeTextElement(QStringLiteral("ele"), QString::number(waypoint->elevation, 'f', kNumDigits));
+  }
+}
 
 void
 GpxFormat::write(QIODevice* io, const Geodata* geodata)
@@ -50,7 +64,6 @@ GpxFormat::write(QIODevice* io, const Geodata* geodata)
   Waypoint min = bounds.first;
   Waypoint max = bounds.second;
 
-  const auto kNumDigits = 9;
 
   if (! geodata->getRoutes().empty() || ! geodata->getTracks().empty() || ! geodata->getWaypoints().empty()) {
     xml.writeStartElement(QStringLiteral("bounds"));
@@ -63,8 +76,7 @@ GpxFormat::write(QIODevice* io, const Geodata* geodata)
 
   for (auto&& waypoint : std::as_const(geodata->getWaypoints())) {
     xml.writeStartElement(QStringLiteral("wpt"));
-    xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', kNumDigits));
-    xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', kNumDigits));
+    gpx_write_waypoint(xml, waypoint.get());
     if (! waypoint->name.isEmpty()) {
       xml.writeTextElement(QStringLiteral("name"), waypoint->name);
       xml.writeTextElement(QStringLiteral("cmt"), waypoint->name);
@@ -80,8 +92,7 @@ GpxFormat::write(QIODevice* io, const Geodata* geodata)
     }
     for (auto&& waypoint : std::as_const(route->getWaypoints())) {
       xml.writeStartElement(QStringLiteral("rtept"));
-      xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', kNumDigits));
-      xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', kNumDigits));
+      gpx_write_waypoint(xml, waypoint.get());
       if (! waypoint->name.isEmpty()) {
         xml.writeTextElement(QStringLiteral("name"), waypoint->name);
       }
@@ -98,8 +109,7 @@ GpxFormat::write(QIODevice* io, const Geodata* geodata)
     xml.writeStartElement(QStringLiteral("trkseg"));
     for (auto&& waypoint : std::as_const(track->getWaypoints())) {
       xml.writeStartElement(QStringLiteral("trkpt"));
-      xml.writeAttribute(QStringLiteral("lat"), QString::number(waypoint->latitude, 'f', kNumDigits));
-      xml.writeAttribute(QStringLiteral("lon"), QString::number(waypoint->longitude, 'f', kNumDigits));
+      gpx_write_waypoint(xml, waypoint.get());
       xml.writeEndElement();
     }
     xml.writeEndElement();

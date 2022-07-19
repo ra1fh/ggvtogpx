@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(ggvtogpx VERSION 1.0.0 LANGUAGES CXX)
 include(CTest)
+include(FindPkgConfig)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -47,6 +48,12 @@ endif()
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 
+find_library(
+    LIBZIP_LIBRARY
+    NAMES libzip)
+
+pkg_check_modules (LIBZIP REQUIRED libzip)
+
 add_compile_options(-Wall -Wextra)
 
 add_executable(ggvtogpx
@@ -55,10 +62,19 @@ add_executable(ggvtogpx
   gpx.cc
   ggv_bin.cc
   ggv_ovl.cc
+  ggv_xml.cc
   ggvtogpx.cc
-)
+  )
 
-target_link_libraries(ggvtogpx PRIVATE Qt${QT_VERSION_MAJOR}::Core)
+target_include_directories(ggvtogpx SYSTEM PUBLIC
+  ${LIBZIP_INCLUDE_DIRS})
+
+target_link_directories(ggvtogpx PRIVATE
+  ${LIBZIP_LIBRARY_DIRS})
+
+target_link_libraries(ggvtogpx PRIVATE
+  ${LIBZIP_LIBRARIES}
+  Qt${QT_VERSION_MAJOR}::Core)
 
 install(TARGETS ggvtogpx)
 
@@ -70,7 +86,8 @@ set (BinTestsToRun
   ggv_bin-sample-v3
   ggv_bin-sample-v4
   ggv_ovl-sample-1
-  ggv_ovl-sample-2)
+  ggv_ovl-sample-2
+  ggv_xml-sample-1)
 
 # Add all the ADD_TEST for each test
 foreach (test ${BinTestsToRun})
