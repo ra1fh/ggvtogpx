@@ -52,17 +52,17 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
   QDomNode root = xml.documentElement();
   QDomNode objectList = root.firstChildElement("objectList");
 
-  for (QDomNode n = objectList.firstChildElement("object"); !n.isNull(); n = n.nextSibling()) {
-    if (! n.isElement()) {
+  for (QDomNode object = objectList.firstChildElement("object"); !object.isNull(); object = object.nextSibling()) {
+    if (! object.isElement()) {
       continue;
     }
 
-    QDomElement e = n.toElement();
-    QString uid = e.attribute("uid");
-    QString clsname = e.attribute("clsName");
-    QString clsid = e.attribute("clsid");
+    QDomElement objectElement = object.toElement();
+    QString uid = objectElement.attribute("uid");
+    QString clsname = objectElement.attribute("clsName");
+    QString clsid = objectElement.attribute("clsid");
     if (ggv_xml_debug_level() > 1) {
-      qDebug().noquote() << "element name:" << e.tagName();
+      qDebug().noquote() << "element name:" << objectElement.tagName();
       qDebug().noquote() << "    uid:" << uid;
       qDebug().noquote() << "    clsName:" << clsname;
       qDebug().noquote() << "    clsid:" << clsid;
@@ -73,7 +73,7 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
     }
 
     auto waypoint_list = std::make_unique<WaypointList>();
-    QDomNode base = n.firstChildElement("base");
+    QDomNode base = object.firstChildElement("base");
     if (!base.isNull()) {
       QDomElement name = base.firstChildElement("name").toElement();
       if (!name.isNull()) {
@@ -84,7 +84,7 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
       }
     }
 
-    QDomNode attributelist = n.firstChildElement("attributeList");
+    QDomNode attributelist = object.firstChildElement("attributeList");
     for (QDomNode attribute = attributelist.firstChildElement("attribute"); !attribute.isNull(); attribute = attribute.nextSibling()) {
       QDomElement e = attribute.toElement();
       QString iidname = e.attribute("iidName");
@@ -99,15 +99,15 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
         continue;
       }
       for (QDomNode coord = coordlist.firstChildElement("coord"); !coord.isNull(); coord = coord.nextSibling()) {
-        QDomElement e = coord.toElement();
-        if (!e.hasAttribute("x") || !e.hasAttribute("y")) {
+        QDomElement coordElement = coord.toElement();
+        if (!coordElement.hasAttribute("x") || !coordElement.hasAttribute("y")) {
           continue;
         }
         auto waypoint = std::make_unique<Waypoint>();
-        waypoint->latitude = e.attribute("y").toDouble();
-        waypoint->longitude = e.attribute("x").toDouble();
-        if (e.hasAttribute("z") && e.attribute("z") != "-32768") {
-          waypoint->elevation = e.attribute("z").toDouble();
+        waypoint->latitude = coordElement.attribute("y").toDouble();
+        waypoint->longitude = coordElement.attribute("x").toDouble();
+        if (coordElement.hasAttribute("z") && coordElement.attribute("z") != "-32768") {
+          waypoint->elevation = coordElement.attribute("z").toDouble();
         }
         if (ggv_xml_debug_level() > 2) {
           qDebug().noquote() << "            coord:"
