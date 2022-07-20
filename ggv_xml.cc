@@ -59,7 +59,7 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
       QString clsname = e.attribute("clsName");
       QString clsid = e.attribute("clsid");
       if (ggv_xml_debug_level() > 1) {
-        qDebug().noquote() << "Element name:" << e.tagName();
+        qDebug().noquote() << "element name:" << e.tagName();
         qDebug().noquote() << "    uid:" << uid;
         qDebug().noquote() << "    clsName:" << clsname;
         qDebug().noquote() << "    clsid:" << clsid;
@@ -87,7 +87,7 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
             QDomNode coordlist = attribute.firstChildElement("coordList");
             if (! coordlist.isNull()) {
               int coord_count = 0;
-              int coord_skipp = 0;
+              int coord_skip = 0;
               auto waypoint_list = std::make_unique<WaypointList>();
               waypoint_list->name = track_name;
               for (QDomNode coord = coordlist.firstChildElement("coord"); !coord.isNull(); coord = coord.nextSibling()) {
@@ -108,12 +108,12 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
                   }
                   waypoint_list->addWaypoint(waypoint);
                 } else {
-                  coord_skipp++;
+                  coord_skip++;
                 }
               }
               if (ggv_xml_debug_level() > 1) {
-                qDebug().noquote() << "            count:" << coord_count;
-                qDebug().noquote() << "            skipp:" << coord_count;
+                qDebug().noquote() << "            coord count:" << coord_count;
+                qDebug().noquote() << "            coord skip :" << coord_skip ;
               }
               if (coord_count) {
                 geodata->addTrack(waypoint_list);
