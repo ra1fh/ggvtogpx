@@ -47,6 +47,7 @@ endif()
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Xml)
 
 find_library(
     LIBZIP_LIBRARY
@@ -75,6 +76,8 @@ target_link_directories(ggvtogpx PRIVATE
 target_link_libraries(ggvtogpx PRIVATE
   ${LIBZIP_LIBRARIES}
   Qt${QT_VERSION_MAJOR}::Core)
+
+target_link_libraries(ggvtogpx PRIVATE Qt${QT_VERSION_MAJOR}::Xml)
 
 install(TARGETS ggvtogpx)
 

@@ -24,7 +24,7 @@
 #include <QDebug>
 #include <QString>
 #include <QLatin1String>
-#include <QXmlStreamReader>
+#include <QDomDocument>
 
 #include <zip.h>
 
@@ -46,166 +46,84 @@ ggv_xml_debug_level(const int* update = nullptr)
   return debug_level;
 }
 
-
-static QString
-ggv_xml_parse_base(QXmlStreamReader& xml)
-{
-  QString name;
-  if (ggv_xml_debug_level() > 1) {
-    qDebug() << "xml: parse_base";
-  };
-
-  while (xml.readNextStartElement()) {
-    if (ggv_xml_debug_level() > 1) {
-      qDebug() << "xml: parse_base start:" << xml.name();
-    }
-
-    if (xml.name() == QLatin1String("name")) {
-      name = xml.readElementText();
-    }
-
-    return name;
-
-    if (ggv_xml_debug_level() > 1) {
-      qDebug() << "xml: parse_base name:" << name;
-    }
-
-    xml.skipCurrentElement();
-  }
-  return name;
-}
-
 static void
-ggv_xml_parse_attributelist(QXmlStreamReader& xml, Geodata* geodata, const QString& name)
+ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
 {
-  if (ggv_xml_debug_level() > 1) {
-    qDebug() << "xml: parse_attributelist";
-  }
+  QDomNode root = xml.documentElement();
+  QDomNode objectList = root.firstChildElement("objectList");
 
-  while (xml.readNextStartElement()) {
-    if (ggv_xml_debug_level() > 1) {
-      qDebug() << "xml: parse_attributelist start:" << xml.name();
-    }
-
-    if (xml.name() == QLatin1String("attribute")) {
-      QStringView iid = xml.attributes().value(QLatin1String("iidName"));
+  for (QDomNode n = objectList.firstChildElement("object"); !n.isNull(); n = n.nextSibling()) {
+    if (n.isElement()) {
+      QDomElement e = n.toElement();
+      QString uid = e.attribute("uid");
+      QString clsname = e.attribute("clsName");
+      QString clsid = e.attribute("clsid");
       if (ggv_xml_debug_level() > 1) {
-        qDebug() << "xml: parse_attributelist iid:  " << iid;
+        qDebug().noquote() << "Element name:" << e.tagName();
+        qDebug().noquote() << "    uid:" << uid;
+        qDebug().noquote() << "    clsName:" << clsname;
+        qDebug().noquote() << "    clsid:" << clsid;
       }
-      if (iid == QLatin1String("IID_IGraphic")) {
-        auto waypoint_list = std::make_unique<WaypointList>();
-        waypoint_list->name = name;
-        while (xml.readNextStartElement()) {
-          if (ggv_xml_debug_level() > 1) {
-            qDebug() << "xml: parse_attributelist start:" << xml.name();
-          }
-          if (xml.name() == QLatin1String("coordList")) {
-            while (xml.readNextStartElement()) {
-              auto waypoint = std::make_unique<Waypoint>();
-              waypoint->latitude = xml.attributes().value(QLatin1String("y")).toDouble();
-              waypoint->longitude = xml.attributes().value(QLatin1String("x")).toDouble();
-              waypoint->elevation = xml.attributes().value(QLatin1String("z")).toDouble();
-              if (ggv_xml_debug_level() > 2) {
-                qDebug() << "xml: parse_attributelist"
-                         << "lat:" << waypoint->latitude
-                         << "lon:" << waypoint->longitude
-                         << "ele:" << waypoint->elevation;
-              }
-              waypoint_list->addWaypoint(waypoint);
-
-              xml.skipCurrentElement();
+      if (clsname == "CLSID_GraphicLine") {
+        QString track_name;
+        QDomNode base = n.firstChildElement("base");
+        if (!base.isNull()) {
+          QDomElement name = base.firstChildElement("name").toElement();
+          if (!name.isNull()) {
+            track_name = name.text();
+            if (ggv_xml_debug_level() > 1) {
+              qDebug().noquote() << "        track_name:" << track_name;
             }
           }
-          xml.skipCurrentElement();
         }
-        geodata->addTrack(waypoint_list);
+        QDomNode attributelist = n.firstChildElement("attributeList");
+        for (QDomNode attribute = attributelist.firstChildElement("attribute"); !attribute.isNull(); attribute = attribute.nextSibling()) {
+          QDomElement e = attribute.toElement();
+          QString iidname = e.attribute("iidName");
+          if (ggv_xml_debug_level() > 1) {
+            qDebug().noquote() << "        iidName:" << iidname;
+          }
+          if (iidname == "IID_IGraphic") {
+            QDomNode coordlist = attribute.firstChildElement("coordList");
+            if (! coordlist.isNull()) {
+              int coord_count = 0;
+              int coord_skipp = 0;
+              auto waypoint_list = std::make_unique<WaypointList>();
+              waypoint_list->name = track_name;
+              for (QDomNode coord = coordlist.firstChildElement("coord"); !coord.isNull(); coord = coord.nextSibling()) {
+                QDomElement e = coord.toElement();
+                if (e.hasAttribute("x") && e.hasAttribute("y")) {
+                  coord_count++;
+                  auto waypoint = std::make_unique<Waypoint>();
+                  waypoint->latitude = e.attribute("y").toDouble();
+                  waypoint->longitude = e.attribute("x").toDouble();
+                  if (e.hasAttribute("z")) {
+                    waypoint->elevation = e.attribute("z").toDouble();
+                  }
+                  if (ggv_xml_debug_level() > 2) {
+                    qDebug().noquote() << "            coord:"
+                                       << waypoint->latitude
+                                       << waypoint->longitude
+                                       << waypoint->elevation;
+                  }
+                  waypoint_list->addWaypoint(waypoint);
+                } else {
+                  coord_skipp++;
+                }
+              }
+              if (ggv_xml_debug_level() > 1) {
+                qDebug().noquote() << "            count:" << coord_count;
+                qDebug().noquote() << "            skipp:" << coord_count;
+              }
+              if (coord_count) {
+                geodata->addTrack(waypoint_list);
+              }
+            }
+          }
+
+        }
       }
     }
-    xml.skipCurrentElement();
-  }
-}
-
-static void
-ggv_xml_parse_object(QXmlStreamReader& xml, Geodata* geodata)
-{
-  QString name;
-  if (ggv_xml_debug_level() > 1) {
-    qDebug() << "xml: parse_object";
-  }
-
-  while (xml.readNextStartElement()) {
-    if (ggv_xml_debug_level() > 1) {
-      qDebug() << "xml: parse_object start:" << xml.name();
-    }
-
-    if (xml.name() == QLatin1String("base")) {
-      name = ggv_xml_parse_base(xml);
-    } else if (xml.name() == QLatin1String("attributeList")) {
-      ggv_xml_parse_attributelist(xml, geodata, name);
-    }
-
-    xml.skipCurrentElement();
-  }
-}
-
-static void
-ggv_xml_parse_objectlist(QXmlStreamReader& xml, Geodata* geodata)
-{
-  if (ggv_xml_debug_level() > 1) {
-    qDebug() << "xml: parse_objectlist";
-  };
-
-  while (xml.readNextStartElement()) {
-    if (ggv_xml_debug_level() > 1) {
-      qDebug() << "xml: parse_objectlist start:" << xml.name();
-    }
-
-    if (xml.name() == QLatin1String("object")) {
-      QStringView clsname = xml.attributes().value(QLatin1String("clsName"));
-      if (ggv_xml_debug_level() > 1) {
-        qDebug() << "xml: parse_objectlist clsname:  " << clsname;
-      }
-      if (clsname == QLatin1String("CLSID_GraphicLine")) {
-        ggv_xml_parse_object(xml, geodata);
-      }
-    }
-    xml.skipCurrentElement();
-  }
-}
-
-static void
-ggv_xml_parse_geogrid(QXmlStreamReader& xml, Geodata* geodata)
-{
-  if (ggv_xml_debug_level() > 1) {
-    qDebug() << "xml: parse_geogrid";
-  };
-
-  while (xml.readNextStartElement()) {
-    if (ggv_xml_debug_level() > 1) {
-      qDebug() << "xml: parse_geogrid start:" << xml.name();
-    }
-    if (xml.name() == QLatin1String("objectList")) {
-      ggv_xml_parse_objectlist(xml, geodata);
-    }
-    xml.skipCurrentElement();
-  }
-}
-
-static void
-ggv_xml_parse_document(QXmlStreamReader& xml, Geodata* geodata)
-{
-  if (ggv_xml_debug_level() > 1) {
-    qDebug() << "xml: parse_document";
-  };
-
-  while (xml.readNextStartElement()) {
-    if (ggv_xml_debug_level() > 1) {
-      qDebug() << "xml: parse_document start:" << xml.name();
-    }
-    if (xml.name() == QLatin1String("geogridOvl")) {
-      ggv_xml_parse_geogrid(xml, geodata);
-    }
-    xml.skipCurrentElement();
   }
 }
 
@@ -228,8 +146,6 @@ GgvXmlFormat::probe(QIODevice* io)
   }
   return false;
 }
-
-
 
 void
 GgvXmlFormat::read(QIODevice* io, Geodata* geodata)
@@ -299,7 +215,8 @@ GgvXmlFormat::read(QIODevice* io, Geodata* geodata)
     exit(1);
   }
 
-  QXmlStreamReader xml(filebuf);
+  QDomDocument xml("geogrid50");
+  xml.setContent(filebuf);
   ggv_xml_parse_document(xml, geodata);
 
   zip_fclose(zip_file);
