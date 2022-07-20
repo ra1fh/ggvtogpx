@@ -90,7 +90,8 @@ set (BinTestsToRun
   ggv_bin-sample-v4
   ggv_ovl-sample-1
   ggv_ovl-sample-2
-  ggv_xml-sample-1)
+  ggv_xml-sample-1
+  ggv_xml-sample-2)
 
 # Add all the ADD_TEST for each test
 foreach (test ${BinTestsToRun})

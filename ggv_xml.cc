@@ -97,7 +97,7 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
                   auto waypoint = std::make_unique<Waypoint>();
                   waypoint->latitude = e.attribute("y").toDouble();
                   waypoint->longitude = e.attribute("x").toDouble();
-                  if (e.hasAttribute("z")) {
+                  if (e.hasAttribute("z") && e.attribute("z") != "-32768") {
                     waypoint->elevation = e.attribute("z").toDouble();
                   }
                   if (ggv_xml_debug_level() > 2) {
