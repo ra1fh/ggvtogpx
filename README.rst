@@ -34,7 +34,7 @@ this:
 
 ``ggvtogpx`` supports ZIP compressed XML overlay files (version
 5.0). The archive content can be listed with unzip to detect the
-verion 5.0 format. Specifically it contains the file geogrid50.xml:
+version 5.0 format. Specifically it contains the file geogrid50.xml:
 
 ::
 
@@ -56,7 +56,7 @@ Building and Installing
 Requirements:
 
 * Qt5 or Qt6
-* minizip (Debian/Ubuntu: libminizip-dev)
+* libzip (Debian/Ubuntu: libzip-dev)
 * CMake
 * C++17 compiler
 * Tested on Ubuntu 20.04, Ubuntu 22.04, and OpenBSD 7.1
