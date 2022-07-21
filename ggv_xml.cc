@@ -46,6 +46,52 @@ ggv_xml_debug_level(const int* update = nullptr)
   return debug_level;
 }
 
+static std::unique_ptr<WaypointList>
+ggv_xml_parse_attributelist(QDomNode& attributelist)
+{
+  auto waypoint_list = std::make_unique<WaypointList>();
+  for (QDomNode attribute = attributelist.firstChildElement("attribute"); !attribute.isNull(); attribute = attribute.nextSibling()) {
+    QDomElement e = attribute.toElement();
+    QString iidname = e.attribute("iidName");
+    if (ggv_xml_debug_level() > 1) {
+      qDebug().noquote() << "        iidName:" << iidname;
+    }
+    if (iidname != "IID_IGraphic") {
+      continue;
+    }
+    QDomNode coordlist = attribute.firstChildElement("coordList");
+    if (coordlist.isNull()) {
+      continue;
+    }
+    for (QDomNode coord = coordlist.firstChildElement("coord"); !coord.isNull(); coord = coord.nextSibling()) {
+      QDomElement coordElement = coord.toElement();
+      if (!coordElement.hasAttribute("x") || !coordElement.hasAttribute("y")) {
+        continue;
+      }
+      auto waypoint = std::make_unique<Waypoint>();
+      waypoint->latitude = coordElement.attribute("y").toDouble();
+      waypoint->longitude = coordElement.attribute("x").toDouble();
+      if (coordElement.hasAttribute("z") && coordElement.attribute("z") != "-32768") {
+        waypoint->elevation = coordElement.attribute("z").toDouble();
+      }
+      if (ggv_xml_debug_level() > 2) {
+        qDebug().noquote() << "            coord:"
+                           << waypoint->latitude
+                           << waypoint->longitude
+                           << waypoint->elevation;
+      }
+      waypoint_list->addWaypoint(waypoint);
+    }
+
+    if (ggv_xml_debug_level() > 1) {
+      qDebug().noquote() << "            coord count:"
+                         << waypoint_list->getWaypoints().size();
+    }
+
+  }
+  return waypoint_list;
+}
+
 static void
 ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
 {
@@ -72,61 +118,109 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
       continue;
     }
 
-    auto waypoint_list = std::make_unique<WaypointList>();
+    QString name;
     QDomNode base = object.firstChildElement("base");
     if (!base.isNull()) {
-      QDomElement name = base.firstChildElement("name").toElement();
-      if (!name.isNull()) {
-        waypoint_list->name = name.text();
+      if (ggv_xml_debug_level() > 1) {
+        qDebug().noquote() << "        base";
+      }
+      QDomElement name_element = base.firstChildElement("name").toElement();
+      if (!name_element.isNull()) {
         if (ggv_xml_debug_level() > 1) {
-          qDebug().noquote() << "        track_name:" << waypoint_list->name;
+          qDebug().noquote() << "            name";
+        }
+        name = name_element.text();
+        if (ggv_xml_debug_level() > 1) {
+          qDebug().noquote() << "                text:"
+                             << name;
         }
       }
     }
 
     QDomNode attributelist = object.firstChildElement("attributeList");
-    for (QDomNode attribute = attributelist.firstChildElement("attribute"); !attribute.isNull(); attribute = attribute.nextSibling()) {
-      QDomElement e = attribute.toElement();
-      QString iidname = e.attribute("iidName");
-      if (ggv_xml_debug_level() > 1) {
-        qDebug().noquote() << "        iidName:" << iidname;
-      }
-      if (iidname != "IID_IGraphic") {
-        continue;
-      }
-      QDomNode coordlist = attribute.firstChildElement("coordList");
-      if (coordlist.isNull()) {
-        continue;
-      }
-      for (QDomNode coord = coordlist.firstChildElement("coord"); !coord.isNull(); coord = coord.nextSibling()) {
-        QDomElement coordElement = coord.toElement();
-        if (!coordElement.hasAttribute("x") || !coordElement.hasAttribute("y")) {
-          continue;
-        }
-        auto waypoint = std::make_unique<Waypoint>();
-        waypoint->latitude = coordElement.attribute("y").toDouble();
-        waypoint->longitude = coordElement.attribute("x").toDouble();
-        if (coordElement.hasAttribute("z") && coordElement.attribute("z") != "-32768") {
-          waypoint->elevation = coordElement.attribute("z").toDouble();
-        }
-        if (ggv_xml_debug_level() > 2) {
-          qDebug().noquote() << "            coord:"
-                             << waypoint->latitude
-                             << waypoint->longitude
-                             << waypoint->elevation;
-        }
-        waypoint_list->addWaypoint(waypoint);
-      }
-
-      if (ggv_xml_debug_level() > 1) {
-        qDebug().noquote() << "            coord count:" << waypoint_list->getWaypoints().size();
-      }
-
-      if (waypoint_list->getWaypoints().size()) {
-        geodata->addTrack(waypoint_list);
-      }
+    auto waypoint_list = ggv_xml_parse_attributelist(attributelist);
+    if (waypoint_list->getWaypoints().size()) {
+      waypoint_list->name = name;
+      geodata->addTrack(waypoint_list);
     }
   }
+}
+
+static int
+ggv_xml_read_zip(QByteArray& buf, Geodata* geodata)
+{
+  // using a shared pointer to register fini function that frees memory
+  // within the non-dynamic zip_error_t
+  zip_error_t error_storage;
+  std::shared_ptr<zip_error_t> error(&error_storage, [](zip_error_t* error) {
+    zip_error_fini(error);
+  });
+  zip_error_init(error.get());
+
+  std::shared_ptr<zip_source_t> source(zip_source_buffer_create(buf.data(), buf.size(), 0, error.get()), [](zip_source_t* source) {
+    zip_source_free(source);
+  });
+  if (!source) {
+    qCritical() << "xml: create source error";
+    return 1;
+  }
+
+  std::shared_ptr<zip_t> zip(zip_open_from_source(source.get(), 0, error.get()), [](zip_t *zip) {
+    zip_close(zip);
+  });
+
+  if (! zip) {
+    qCritical() << "xml: create zip error";
+    zip_source_free(source.get());
+    return 1;
+  }
+  zip_source_keep(source.get());
+
+  zip_int64_t index = zip_name_locate(zip.get(), "geogrid50.xml", ZIP_FL_NODIR);
+  if (ggv_xml_debug_level() > 1) {
+    qDebug() << "xml: found index:" << index;
+  }
+
+  zip_stat_t stat;
+  if (zip_stat_index(zip.get(), index, 0, &stat) != 0) {
+    qCritical().noquote()
+        << QStringLiteral("xml: zip stat failed");
+    return 1;
+  }
+  if (ggv_xml_debug_level() > 1) {
+    qDebug() << "xml: zip stat size:" << stat.size;
+  }
+
+  std::shared_ptr<zip_file_t> zip_file(zip_fopen_index(zip.get(), index, 0), [](zip_file_t* zip_file) {
+    zip_fclose(zip_file);
+  });
+  if (! zip_file) {
+    qCritical().noquote()
+        << QStringLiteral("xml: error opening file ");
+    return 1;
+  }
+
+  // Use a rather convervative limit here although the API supports more
+  if (stat.size > INT32_MAX) {
+    qCritical().noquote()
+        << QStringLiteral("xml: file size exceeds limit (%1 > %2)").arg(stat.size).arg(INT32_MAX);
+    return 1;
+  }
+
+  QByteArray filebuf;
+  filebuf.resize(static_cast<qsizetype>(stat.size));
+
+  zip_int64_t len = zip_fread(zip_file.get(), filebuf.data(), filebuf.size());
+  if (len <= 0) {
+    qCritical().noquote()
+        << QStringLiteral("xml: error reading archive file (%1)").arg(len);
+    return 1;
+  }
+
+  QDomDocument xml("geogrid50");
+  xml.setContent(filebuf);
+  ggv_xml_parse_document(xml, geodata);
+  return 0;
 }
 
 /***************************************************************************
@@ -159,71 +253,9 @@ GgvXmlFormat::read(QIODevice* io, Geodata* geodata)
   io->reset();
   buf = io->readAll();
 
-  zip_error_t error;
-  zip_error_init(&error);
-  zip_source_t* source = zip_source_buffer_create(buf.data(), buf.size(), 0, &error);
-  if (source == nullptr) {
-    qCritical() << "xml: create source error";
-    zip_error_fini(&error);
+  if (ggv_xml_read_zip(buf, geodata)) {
     exit(1);
   }
-
-  zip_t* zip = zip_open_from_source(source, 0, &error);
-  if (zip == nullptr) {
-    qCritical() << "xml: create zip error";
-    zip_source_free(source);
-    zip_error_fini(&error);
-    exit(1);
-  }
-  zip_error_fini(&error);
-  zip_source_keep(source);
-
-  zip_int64_t index = zip_name_locate(zip, "geogrid50.xml", ZIP_FL_NODIR);
-  if (ggv_xml_debug_level() > 1) {
-    qDebug() << "xml: found index:" << index;
-  }
-
-  zip_stat_t stat;
-  if (zip_stat_index(zip, index, 0, &stat) != 0) {
-    qCritical().noquote()
-        << QStringLiteral("xml: zip stat failed");
-    exit(1);
-  }
-  if (ggv_xml_debug_level() > 1) {
-    qDebug() << "xml: zip stat size:" << stat.size;
-  }
-
-  zip_file_t* zip_file = zip_fopen_index(zip, index, 0);
-  if (zip_file == nullptr) {
-    qCritical().noquote()
-        << QStringLiteral("xml: error opening file ");
-    exit(1);
-  }
-
-  // Use a rather convervative limit here although the API supports more
-  if (stat.size > INT32_MAX) {
-    qCritical().noquote()
-        << QStringLiteral("xml: file size exceeds limit (%1 > %2)").arg(stat.size).arg(INT32_MAX);
-    exit(1);
-  }
-
-  QByteArray filebuf;
-  filebuf.resize(static_cast<qsizetype>(stat.size));
-
-  zip_int64_t len = zip_fread(zip_file, filebuf.data(), filebuf.size());
-  if (len <= 0) {
-    qCritical().noquote()
-        << QStringLiteral("xml: error reading archive file (%1)").arg(len);
-    exit(1);
-  }
-
-  QDomDocument xml("geogrid50");
-  xml.setContent(filebuf);
-  ggv_xml_parse_document(xml, geodata);
-
-  zip_fclose(zip_file);
-  zip_close(zip);
-  zip_source_free(source);
 }
 
 const QString GgvXmlFormat::getName()
