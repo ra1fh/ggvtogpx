@@ -47,6 +47,7 @@ public:
   WaypointList() = default;
 
   void addWaypoint(std::unique_ptr<Waypoint>& waypoint);
+  std::unique_ptr<Waypoint> extractFirstWaypoint();
   const std::list<std::unique_ptr<Waypoint>>& getWaypoints() const;
 
   QString name;

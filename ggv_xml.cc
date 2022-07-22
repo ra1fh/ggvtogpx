@@ -56,38 +56,48 @@ ggv_xml_parse_attributelist(QDomNode& attributelist)
     if (ggv_xml_debug_level() > 1) {
       qDebug().noquote() << "        iidName:" << iidname;
     }
-    if (iidname != "IID_IGraphic") {
-      continue;
-    }
-    QDomNode coordlist = attribute.firstChildElement("coordList");
-    if (coordlist.isNull()) {
-      continue;
-    }
-    for (QDomNode coord = coordlist.firstChildElement("coord"); !coord.isNull(); coord = coord.nextSibling()) {
-      QDomElement coordElement = coord.toElement();
-      if (!coordElement.hasAttribute("x") || !coordElement.hasAttribute("y")) {
+    if (iidname == "IID_IGraphicTextAttributes") {
+      QDomElement text = attribute.firstChildElement("text");
+      if (text.isNull()) {
         continue;
       }
-      auto waypoint = std::make_unique<Waypoint>();
-      waypoint->latitude = coordElement.attribute("y").toDouble();
-      waypoint->longitude = coordElement.attribute("x").toDouble();
-      if (coordElement.hasAttribute("z") && coordElement.attribute("z") != "-32768") {
-        waypoint->elevation = coordElement.attribute("z").toDouble();
+      if (! text.text().isEmpty()) {
+        waypoint_list->name = text.text();
+        if (ggv_xml_debug_level() > 1) {
+          qDebug().noquote() << "            text:" << text.text();
+        }
       }
-      if (ggv_xml_debug_level() > 2) {
-        qDebug().noquote() << "            coord:"
-                           << waypoint->latitude
-                           << waypoint->longitude
-                           << waypoint->elevation;
+    } else if (iidname == "IID_IGraphic") {
+      QDomNode coordlist = attribute.firstChildElement("coordList");
+      if (coordlist.isNull()) {
+        continue;
       }
-      waypoint_list->addWaypoint(waypoint);
+      for (QDomNode coord = coordlist.firstChildElement("coord"); !coord.isNull(); coord = coord.nextSibling()) {
+        QDomElement coordElement = coord.toElement();
+        if (!coordElement.hasAttribute("x") || !coordElement.hasAttribute("y")) {
+          continue;
+        }
+        auto waypoint = std::make_unique<Waypoint>();
+        waypoint->latitude = coordElement.attribute("y").toDouble();
+        waypoint->longitude = coordElement.attribute("x").toDouble();
+        if (coordElement.hasAttribute("z") && coordElement.attribute("z") != "-32768") {
+          waypoint->elevation = coordElement.attribute("z").toDouble();
+        }
+        if (ggv_xml_debug_level() > 2) {
+          qDebug().noquote() << "            coord:"
+                             << waypoint->latitude
+                             << waypoint->longitude
+                             << waypoint->elevation;
+        }
+        waypoint_list->addWaypoint(waypoint);
+      }
     }
 
-    if (ggv_xml_debug_level() > 1) {
-      qDebug().noquote() << "            coord count:"
-                         << waypoint_list->getWaypoints().size();
-    }
 
+  }
+  if (ggv_xml_debug_level() > 1) {
+    qDebug().noquote() << "            coord count:"
+                       << waypoint_list->getWaypoints().size();
   }
   return waypoint_list;
 }
@@ -97,6 +107,9 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
 {
   QDomNode root = xml.documentElement();
   QDomNode objectList = root.firstChildElement("objectList");
+  int waypoint_count = 0;
+  int track_count = 0;
+  int text_count = 0;
 
   for (QDomNode object = objectList.firstChildElement("object"); !object.isNull(); object = object.nextSibling()) {
     if (! object.isElement()) {
@@ -114,7 +127,7 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
       qDebug().noquote() << "    clsid:" << clsid;
     }
 
-    if (clsname != "CLSID_GraphicLine") {
+    if (clsname != "CLSID_GraphicLine" && clsname != "CLSID_GraphicCircle" && clsname != "CLSID_GraphicText") {
       continue;
     }
 
@@ -139,9 +152,35 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
 
     QDomNode attributelist = object.firstChildElement("attributeList");
     auto waypoint_list = ggv_xml_parse_attributelist(attributelist);
-    if (waypoint_list->getWaypoints().size()) {
-      waypoint_list->name = name;
-      geodata->addTrack(waypoint_list);
+    if (waypoint_list && waypoint_list->getWaypoints().size()) {
+      if (clsname == "CLSID_GraphicLine") {
+        if (name.isEmpty() || name == "Teilstrecke" || name == "Line") {
+          waypoint_list->name = QString("Track %1").arg(++track_count);
+        } else {
+          waypoint_list->name = name;
+        }
+        geodata->addTrack(waypoint_list);
+      } else if (clsname == "CLSID_GraphicCircle") {
+        auto waypoint = waypoint_list->extractFirstWaypoint();
+        if (waypoint) {
+          if (name.isEmpty() || name == "Circle") {
+            waypoint->name = QString("RPT") + QString::number(++waypoint_count).rightJustified(3, '0');
+          } else {
+            waypoint->name = name;
+          }
+          geodata->addWaypoint(waypoint);
+        }
+      } else if (clsname == "CLSID_GraphicText") {
+        auto waypoint = waypoint_list->extractFirstWaypoint();
+        if (waypoint) {
+          if (waypoint_list->name.isEmpty() || waypoint_list->name == "Text") {
+            waypoint->name = QString("Text %1").arg(++text_count);
+          } else {
+            waypoint->name = waypoint_list->name;
+          }
+          geodata->addWaypoint(waypoint);
+        }
+      }
     }
   }
 }

@@ -35,6 +35,14 @@ WaypointList::addWaypoint(std::unique_ptr<Waypoint>& waypoint)
   waypoint_list.push_back(std::move(waypoint));
 };
 
+std::unique_ptr<Waypoint>
+WaypointList::extractFirstWaypoint()
+{
+  auto ret = std::move(waypoint_list.front());
+  waypoint_list.pop_front();
+  return ret;
+};
+
 const std::list<std::unique_ptr<Waypoint>>&
                                         WaypointList::getWaypoints() const
 {
