@@ -99,3 +99,9 @@ foreach (test ${BinTestsToRun})
   add_test (NAME ${test}-diff COMMAND ${CMAKE_COMMAND} -E compare_files testdata/${test}.gpx testdata/${test}.out)
   set_tests_properties(${test}-generate PROPERTIES ENVIRONMENT "GGVTOGPX_TESTMODE=1")
 endforeach ()
+
+add_custom_target(diff)
+foreach(test ${BinTestsToRun})
+add_custom_command(TARGET diff
+  COMMAND diff -u testdata/${test}.gpx testdata/${test}.out)
+endforeach()
