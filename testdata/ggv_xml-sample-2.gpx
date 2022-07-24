@@ -3,7 +3,7 @@
   <time>1970-01-01T00:00:00Z</time>
   <bounds minlat="48.946518017" minlon="8.922272425" maxlat="48.993516575" maxlon="8.988087787"/>
   <trk>
-    <name>Track 1</name>
+    <name>Track 001</name>
     <trkseg>
       <trkpt lat="48.946608024" lon="8.959141571"/>
       <trkpt lat="48.947102452" lon="8.958185130"/>
@@ -37,7 +37,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 2</name>
+    <name>Track 002</name>
     <trkseg>
       <trkpt lat="48.966170066" lon="8.949424946"/>
       <trkpt lat="48.966889759" lon="8.949492533"/>
@@ -45,7 +45,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 3</name>
+    <name>Track 003</name>
     <trkseg>
       <trkpt lat="48.970201061" lon="8.950840292"/>
       <trkpt lat="48.970425862" lon="8.950840071"/>
@@ -139,7 +139,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 4</name>
+    <name>Track 004</name>
     <trkseg>
       <trkpt lat="48.946518017" lon="8.959005069"/>
       <trkpt lat="48.947102402" lon="8.958048553"/>
@@ -178,7 +178,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 5</name>
+    <name>Track 005</name>
     <trkseg>
       <trkpt lat="48.968783828" lon="8.962471035"/>
       <trkpt lat="48.968919266" lon="8.964042251"/>
@@ -196,7 +196,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 6</name>
+    <name>Track 006</name>
     <trkseg>
       <trkpt lat="48.991803541" lon="8.940103460"/>
       <trkpt lat="48.992029033" lon="8.941265136"/>
@@ -209,7 +209,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 7</name>
+    <name>Track 007</name>
     <trkseg>
       <trkpt lat="48.984259488" lon="8.972915293"/>
       <trkpt lat="48.984349728" lon="8.974145350"/>
@@ -226,7 +226,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 8</name>
+    <name>Track 008</name>
     <trkseg>
       <trkpt lat="48.993516575" lon="8.947961882"/>
       <trkpt lat="48.993292409" lon="8.949602551"/>
@@ -259,7 +259,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 9</name>
+    <name>Track 009</name>
     <trkseg>
       <trkpt lat="48.983047351" lon="8.985626727"/>
       <trkpt lat="48.982327740" lon="8.986036953"/>
@@ -274,7 +274,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 10</name>
+    <name>Track 010</name>
     <trkseg>
       <trkpt lat="48.989569729" lon="8.932648644"/>
       <trkpt lat="48.989705046" lon="8.933399962"/>

@@ -108,8 +108,8 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
   QDomNode root = xml.documentElement();
   QDomNode objectList = root.firstChildElement("objectList");
   int waypoint_count = 0;
-  int track_count = 0;
-  int text_count = 0;
+  uint32_t track_count = 0;
+  uint32_t text_count = 0;
 
   for (QDomNode object = objectList.firstChildElement("object"); !object.isNull(); object = object.nextSibling()) {
     if (! object.isElement()) {
@@ -155,7 +155,7 @@ ggv_xml_parse_document(QDomDocument& xml, Geodata* geodata)
     if (waypoint_list && waypoint_list->getWaypoints().size()) {
       if (clsname == "CLSID_GraphicLine") {
         if (name.isEmpty() || name == "Teilstrecke" || name == "Line") {
-          waypoint_list->name = QString("Track %1").arg(++track_count);
+          waypoint_list->name = QString("Track ") + QString::number(++track_count).rightJustified(3, '0');
         } else {
           waypoint_list->name = name;
         }

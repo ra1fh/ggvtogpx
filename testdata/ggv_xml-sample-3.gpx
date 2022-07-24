@@ -99,7 +99,7 @@
     <desc>RPT016</desc>
   </wpt>
   <trk>
-    <name>Track 1</name>
+    <name>Track 001</name>
     <trkseg>
       <trkpt lat="48.684076074" lon="10.544881382">
         <ele>443.000000000</ele>
@@ -359,7 +359,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 2</name>
+    <name>Track 002</name>
     <trkseg>
       <trkpt lat="48.647448070" lon="10.655016245">
         <ele>407.000000000</ele>
@@ -892,7 +892,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 3</name>
+    <name>Track 003</name>
     <trkseg>
       <trkpt lat="48.722784576" lon="10.532908418">
         <ele>481.000000000</ele>
@@ -1647,7 +1647,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 4</name>
+    <name>Track 004</name>
     <trkseg>
       <trkpt lat="48.825408654" lon="10.508087833">
         <ele>433.000000000</ele>
@@ -2378,7 +2378,7 @@
     </trkseg>
   </trk>
   <trk>
-    <name>Track 5</name>
+    <name>Track 005</name>
     <trkseg>
       <trkpt lat="48.722654674" lon="10.532989311">
         <ele>484.000000000</ele>
