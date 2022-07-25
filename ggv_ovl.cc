@@ -91,54 +91,81 @@ GgvOvlFormat::read(QIODevice* io, Geodata* geodata)
 
   QString latitude;
   QString longitude;
-  int group = 0;
+
   for (int i = 1; i <= symbols; ++i) {
-
     QString symbol = QString("Symbol %1").arg(i);
-    OVL_SYMBOL_TYP type = static_cast<OVL_SYMBOL_TYP>(inifile.value(symbol + "/Typ", 0).toInt());
-    int points = inifile.value(symbol + "/Punkte", -1).toInt();
-
+    int type = inifile.value(symbol + "/Typ", 0).toInt();
     if (getDebugLevel() > 1) {
-      qDebug() << "ggv_ovl::read() points:" << points;
+      qDebug() << "ggv_ovl::read() symbol:" << symbol;
+      qDebug() << "ggv_ovl::read() type:" << type;
+    }
+    if (type < OVL_SYMBOL_BITMAP || type > OVL_SYMBOL_TRIANGLE) {
+      qCritical().noquote()
+          << QStringLiteral("ovl: unknown symbol type") << type;
+      exit(1);
     }
 
     switch (type) {
     case OVL_SYMBOL_LINE:
     case OVL_SYMBOL_POLYGON: {
-      group = inifile.value(symbol + "/Group", -1).toInt();
-      if (points > 0) {
-        auto waypoint_list = std::make_unique<WaypointList>();
-        for (int j = 0; j < points; ++j) {
-          latitude = inifile.value(symbol + "/YKoord" + QString::number(j), "").toString();
+      int group = group = inifile.value(symbol + "/Group", -1).toInt();
+      if (getDebugLevel() > 1) {
+        qDebug() << "ggv_ovl::read() group:" << group;
+      }
+      if (group <= 0) {
+        qCritical().noquote()
+            << QStringLiteral("ovl: invalid or undefined group:") << group;
+        exit(1);
+      }
+
+      int points = inifile.value(symbol + "/Punkte", -1).toInt();
+      if (getDebugLevel() > 1) {
+        qDebug() << "ggv_ovl::read() points:" << points;
+      }
+      if (points <= 0) {
+        qCritical().noquote()
+            << QStringLiteral("ovl: invalid or undefined number of points:") << points;
+        exit(1);
+      }
+
+      auto waypoint_list = std::make_unique<WaypointList>();
+      for (int j = 0; j < points; ++j) {
+        latitude = inifile.value(symbol + "/YKoord" + QString::number(j), "").toString();
+        if (latitude.isEmpty()) {
+          qCritical().noquote()
+              << QStringLiteral("ovl: undefined coordinate: %1/YKoord%2").arg(symbol).arg(j) ;
+          exit(1);
+        }
+        longitude = inifile.value(symbol + "/XKoord" + QString::number(j), "").toString();
+        if (longitude.isEmpty()) {
           if (latitude.isEmpty()) {
-            continue;
-          }
-          longitude = inifile.value(symbol + "/XKoord" + QString::number(j), "").toString();
-          if (longitude.isEmpty()) {
-            continue;
-          }
-          auto waypoint = std::make_unique<Waypoint>();
-          waypoint->latitude = latitude.toDouble();
-          waypoint->longitude = longitude.toDouble();
-          if (group > 1) {
-            waypoint_count++;
-            waypoint->name = QString("RPT") + QString::number(waypoint_count).rightJustified(3, '0');
-          }
-          waypoint_list->addWaypoint(waypoint);
-        }
-        waypoint_list->name = inifile.value(symbol + "/Text", "").toString();
-        if (waypoint_list->name.isEmpty()) {
-          if (group > 1) {
-            waypoint_list->name = QString("Route %1").arg(++route_count);
-          } else {
-            waypoint_list->name = QString("Track %1").arg(++track_count);
+            qCritical().noquote()
+                << QStringLiteral("ovl: undefined coordinate: %1/XKoord%2").arg(symbol).arg(j) ;
+            exit(1);
           }
         }
+        auto waypoint = std::make_unique<Waypoint>();
+        waypoint->latitude = latitude.toDouble();
+        waypoint->longitude = longitude.toDouble();
         if (group > 1) {
-          geodata->addRoute(waypoint_list);
-        } else {
-          geodata->addTrack(waypoint_list);
+          waypoint_count++;
+          waypoint->name = QString("RPT") + QString::number(waypoint_count).rightJustified(3, '0');
         }
+        waypoint_list->addWaypoint(waypoint);
+      }
+
+      waypoint_list->name = inifile.value(symbol + "/Text", "").toString();
+      if (waypoint_list->name.isEmpty()) {
+        if (group > 1) {
+          waypoint_list->name = QString("Route %1").arg(++route_count);
+        } else {
+          waypoint_list->name = QString("Track %1").arg(++track_count);
+        }
+      }
+      if (group > 1) {
+        geodata->addRoute(waypoint_list);
+      } else {
+        geodata->addTrack(waypoint_list);
       }
     }
     break;
@@ -149,11 +176,15 @@ GgvOvlFormat::read(QIODevice* io, Geodata* geodata)
     case OVL_SYMBOL_TRIANGLE: {
       latitude = inifile.value(symbol + "/YKoord", "").toString();
       if (latitude.isEmpty()) {
-        continue;
+        qCritical().noquote()
+            << QStringLiteral("ovl: undefined coordinate: %1/YKoord").arg(symbol);
+        exit(1);
       }
       longitude = inifile.value(symbol + "/XKoord", "").toString();
       if (longitude.isEmpty()) {
-        continue;
+        qCritical().noquote()
+            << QStringLiteral("ovl: undefined coordinate: %1/XKoord").arg(symbol);
+        exit(1);
       }
       auto waypoint = std::make_unique<Waypoint>();
       waypoint->latitude = latitude.toDouble();
@@ -168,6 +199,11 @@ GgvOvlFormat::read(QIODevice* io, Geodata* geodata)
 
     case OVL_SYMBOL_BITMAP:
       break;
+    default:
+      qCritical().noquote()
+          << QStringLiteral("ovl: undefined symbol") << symbol;
+      exit(1);
+
     }
   }
 }
