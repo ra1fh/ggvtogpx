@@ -197,25 +197,32 @@ ggv_xml_read_zip(QByteArray& buf, Geodata* geodata)
   zip_error_init(error.get());
 
   std::shared_ptr<zip_source_t> source(zip_source_buffer_create(buf.data(), buf.size(), 0, error.get()), [](zip_source_t* source) {
-    zip_source_free(source);
+    if (source) {
+      zip_source_free(source);
+    }
   });
   if (!source) {
     qCritical() << "xml: create source error";
     return 1;
   }
+  zip_source_keep(source.get());
 
   std::shared_ptr<zip_t> zip(zip_open_from_source(source.get(), 0, error.get()), [](zip_t *zip) {
-    zip_close(zip);
+    if (zip) {
+      zip_close(zip);
+    }
   });
-
   if (! zip) {
     qCritical() << "xml: create zip error";
     zip_source_free(source.get());
     return 1;
   }
-  zip_source_keep(source.get());
 
   zip_int64_t index = zip_name_locate(zip.get(), "geogrid50.xml", ZIP_FL_NODIR);
+  if (index == -1) {
+    qCritical() << "xml: geogrid50.xml not found";
+    return 1;
+  }
   if (ggv_xml_debug_level() > 1) {
     qDebug() << "xml: found index:" << index;
   }
@@ -231,7 +238,9 @@ ggv_xml_read_zip(QByteArray& buf, Geodata* geodata)
   }
 
   std::shared_ptr<zip_file_t> zip_file(zip_fopen_index(zip.get(), index, 0), [](zip_file_t* zip_file) {
-    zip_fclose(zip_file);
+    if (zip_file) {
+      zip_fclose(zip_file);
+    }
   });
   if (! zip_file) {
     qCritical().noquote()
