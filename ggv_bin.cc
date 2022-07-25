@@ -156,6 +156,7 @@ ggv_bin_read_double(QDataStream& stream, const char* descr)
     qCritical().noquote()
         << QString("bin: Read error (%1)")
         .arg(descr ? descr : "");
+    exit(1);
   }
   return res;
 }
