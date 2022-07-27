@@ -128,11 +128,13 @@ static void
 ggv_bin_read_text32(QDataStream& stream, QByteArray& buf, const char* descr)
 {
   quint32 len = ggv_bin_read32(stream, descr);
-  // The following check prevents passing an unsigned int with a
-  // value greater than INT32_MAX to a signed int parameter in
-  // ggv_bin_read_bytes later on. If this happens, the file is
-  // almost certainly corrupted.
-  if (len > INT32_MAX) {
+  // The following check prevents passing an unsigned int with a value
+  // greater than INT32_MAX to a signed int parameter in
+  // ggv_bin_read_bytes later on. Choosing a much lower limit of
+  // UNIT16_MAX here since a larger value means the file is almost
+  // certainly corrupted and some Qt versions throw std::bad_alloc
+  // when getting close to INT32_MAX
+  if (len > UINT16_MAX) {
     qCritical().noquote()
         << QString("bin: Read error, max len exceeded (%1)")
         .arg(descr ? descr : "");
@@ -454,11 +456,13 @@ ggv_bin_read_v34_record(QDataStream& stream, Geodata* geodata)
     ggv_bin_read_double(stream, "bmp lat");
     ggv_bin_read_double(stream, "bmp unk");
     bmp_len = ggv_bin_read32(stream, "bmp len");
-    // The following check prevents passing an unsigned int with a
-    // value greater than INT32_MAX to a signed int parameter in
-    // ggv_bin_read_bytes later on. If this happens, the file is
-    // almost certainly corrupted.
-    if (bmp_len > INT32_MAX) {
+	// The following check prevents passing an unsigned int with a value
+	// greater than INT32_MAX to a signed int parameter in
+	// ggv_bin_read_bytes later on. Choosing a much lower limit of
+	// UNIT16_MAX here since a larger value means the file is almost
+	// certainly corrupted and some Qt versions throw std::bad_alloc
+	// when getting close to INT32_MAX
+    if (bmp_len > UINT16_MAX) {
       qCritical().noquote()
           << QString("bin: Read error, max bmp_len exceeded");
       exit(1);
