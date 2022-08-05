@@ -108,7 +108,7 @@ GgvOvlFormat::read(QIODevice* io, Geodata* geodata)
     switch (type) {
     case OVL_SYMBOL_LINE:
     case OVL_SYMBOL_POLYGON: {
-      int group = group = inifile.value(symbol + "/Group", -1).toInt();
+      int group = inifile.value(symbol + "/Group", -1).toInt();
       if (getDebugLevel() > 1) {
         qDebug() << "ggv_ovl::read() group:" << group;
       }
