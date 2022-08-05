@@ -456,12 +456,12 @@ ggv_bin_read_v34_record(QDataStream& stream, Geodata* geodata)
     ggv_bin_read_double(stream, "bmp lat");
     ggv_bin_read_double(stream, "bmp unk");
     bmp_len = ggv_bin_read32(stream, "bmp len");
-	// The following check prevents passing an unsigned int with a value
-	// greater than INT32_MAX to a signed int parameter in
-	// ggv_bin_read_bytes later on. Choosing a much lower limit of
-	// UNIT16_MAX here since a larger value means the file is almost
-	// certainly corrupted and some Qt versions throw std::bad_alloc
-	// when getting close to INT32_MAX
+    // The following check prevents passing an unsigned int with a value
+    // greater than INT32_MAX to a signed int parameter in
+    // ggv_bin_read_bytes later on. Choosing a much lower limit of
+    // UNIT16_MAX here since a larger value means the file is almost
+    // certainly corrupted and some Qt versions throw std::bad_alloc
+    // when getting close to INT32_MAX
     if (bmp_len > UINT16_MAX) {
       qCritical().noquote()
           << QString("bin: Read error, max bmp_len exceeded");
