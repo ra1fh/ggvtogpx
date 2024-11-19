@@ -59,7 +59,7 @@ Requirements:
 * libzip (Debian/Ubuntu: libzip-dev)
 * CMake
 * C++17 compiler
-* Tested on Ubuntu 20.04, Ubuntu 22.04, and OpenBSD 7.1
+* Tested on Ubuntu 20.04, Ubuntu 22.04, Ubuntu 24.04, and OpenBSD 7.6
 
 Compilation:
 
