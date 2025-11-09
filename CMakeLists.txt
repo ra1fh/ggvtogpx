@@ -105,6 +105,6 @@ endforeach ()
 
 add_custom_target(diff)
 foreach(test ${BinTestsToRun})
-add_custom_command(TARGET diff
+add_custom_command(TARGET diff POST_BUILD
   COMMAND diff -u ${CMAKE_SOURCE_DIR}/testdata/${test}.gpx ${test}.out)
 endforeach()
