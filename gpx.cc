@@ -21,6 +21,7 @@
  */
 
 #include <QDateTime>
+#include <QTimeZone>
 #include <QXmlStreamWriter>
 
 #include <cmath>
@@ -54,7 +55,7 @@ GpxFormat::write(QIODevice* io, const Geodata* geodata)
 
   QString time;
   if (testmode) {
-    time = QDateTime::fromSecsSinceEpoch(0, Qt::UTC).toString(Qt::ISODate);
+    time = QDateTime::fromSecsSinceEpoch(0, QTimeZone::UTC).toString(Qt::ISODate);
   } else {
     time = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
   }
