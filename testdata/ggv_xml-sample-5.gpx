@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.0" creator="ggvtogpx" xmlns="http://www.topografix.com/GPX/1/0">
-  <time>1970-01-01T00:00:00Z</time>
+  <time>1970-01-01T00:00:00+00:00</time>
   <bounds minlat="49.287926015" minlon="10.409652013" maxlat="49.328106008" maxlon="10.484346002"/>
   <wpt lat="49.291991011" lon="10.466103387">
     <ele>497.000000000</ele>

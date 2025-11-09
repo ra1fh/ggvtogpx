@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.0" creator="ggvtogpx" xmlns="http://www.topografix.com/GPX/1/0">
-  <time>1970-01-01T00:00:00Z</time>
+  <time>1970-01-01T00:00:00+00:00</time>
   <bounds minlat="48.061223531" minlon="9.934377854" maxlat="50.119205792" maxlon="12.844931629"/>
   <wpt lat="49.936238687" lon="9.934377854">
     <name>Unterfranken</name>
