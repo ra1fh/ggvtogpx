@@ -191,7 +191,7 @@ ggv_bin_read_v2(QDataStream& stream, Geodata* geodata)
 
     if (ggv_bin_debug_level() > 1) {
       qDebug().noquote()
-          << QString("------------------------------------ 0x%%1")
+          << QString("------------------------------------ 0x%1")
           .arg(stream.device()->pos(), 0, 16);
     }
 
